@@ -136,6 +136,37 @@ local function createFinish(parent)
 	return platform, finishPad
 end
 
+local function createCheckpoint(parent, index, size, position)
+	local base = createPart(parent, string.format("Checkpoint%02dBase", index), size + Vector3.new(1.8, -0.22, 1.8), position - Vector3.new(0, 0.16, 0), COLORS.CheckpointAccent, Enum.Material.Neon, {
+		CanCollide = false,
+		CanTouch = false,
+		Transparency = 0.34,
+	})
+
+	local pad = createPart(parent, string.format("Checkpoint%02d", index), size, position, COLORS.Checkpoint, Enum.Material.Neon, {
+		CanCollide = false,
+	})
+	pad:SetAttribute("CheckpointIndex", index)
+
+	createLabel(pad, string.format("CHECKPOINT %d", index), 4.5)
+	createSurfaceLabel(pad, "CHECKPOINT")
+
+	return {
+		index = index,
+		part = pad,
+		base = base,
+		respawnCFrame = CFrame.new(position + Vector3.new(0, 5, 0)),
+	}
+end
+
+local function createCheckpoints(parent)
+	return {
+		createCheckpoint(parent, 1, Vector3.new(7, 0.35, 5), Vector3.new(0, 5.75, 48)),
+		createCheckpoint(parent, 2, Vector3.new(10, 0.35, 5), Vector3.new(0, 5.75, 119)),
+		createCheckpoint(parent, 3, Vector3.new(10, 0.35, 5), Vector3.new(0, 5.75, 145)),
+	}
+end
+
 local function createMovingPlatform(parent)
 	local platform = createPart(parent, "MovingPlatform", Vector3.new(9, 1, 8), Vector3.new(-9, 5.2, 132), COLORS.Moving, Enum.Material.Neon)
 	createLabel(platform, "MOVING PLATFORM", 5)
@@ -205,6 +236,7 @@ function CourseBuilder.build()
 
 	local _, startPad = createSpawn(courseFolder)
 	createStaticCourse(courseFolder)
+	local checkpoints = createCheckpoints(courseFolder)
 	local hazards = createHazards(courseFolder)
 	createMovingPlatform(courseFolder)
 	local _, finishPad = createFinish(courseFolder)
@@ -212,7 +244,9 @@ function CourseBuilder.build()
 	return {
 		folder = courseFolder,
 		startPad = startPad,
+		startRespawnCFrame = CFrame.new(0, 8, -4),
 		finishPad = finishPad,
+		checkpoints = checkpoints,
 		hazards = hazards,
 	}
 end

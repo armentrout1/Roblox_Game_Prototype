@@ -62,6 +62,12 @@ function RunManager:start()
 		self:_onFinishTouched(hit)
 	end)
 
+	for _, checkpoint in ipairs(self._course.checkpoints) do
+		checkpoint.part.Touched:Connect(function(hit)
+			self:_onCheckpointTouched(checkpoint, hit)
+		end)
+	end
+
 	for _, hazard in ipairs(self._course.hazards) do
 		hazard.Touched:Connect(function(hit)
 			self:_onHazardTouched(hit)
@@ -100,8 +106,14 @@ function RunManager:_watchCharacter(player, character)
 		return
 	end
 
+	if self._activeRuns[player] then
+		task.defer(function()
+			self:_teleportCharacterForActiveRun(player, character)
+		end)
+	end
+
 	humanoid.Died:Connect(function()
-		self:_cancelRun(player)
+		self:_onCharacterDied(player)
 	end)
 end
 
@@ -114,12 +126,36 @@ function RunManager:_onStartTouched(hit)
 	local startTime = now()
 	self._activeRuns[player] = {
 		startTime = startTime,
+		checkpointIndex = 0,
 	}
 
 	self._remote:FireClient(player, {
 		type = "RunStarted",
 		startTime = startTime,
 		bestTime = self._bestTimes[player] or 0,
+	})
+end
+
+function RunManager:_onCheckpointTouched(checkpoint, hit)
+	local player, humanoid = findPlayerFromHit(hit)
+	if not player or humanoid.Health <= 0 then
+		return
+	end
+
+	local run = self._activeRuns[player]
+	if not run then
+		return
+	end
+
+	local previousCheckpointIndex = run.checkpointIndex or 0
+	if checkpoint.index <= previousCheckpointIndex then
+		return
+	end
+
+	run.checkpointIndex = checkpoint.index
+	self._remote:FireClient(player, {
+		type = "CheckpointReached",
+		checkpointIndex = checkpoint.index,
 	})
 end
 
@@ -159,18 +195,51 @@ function RunManager:_onHazardTouched(hit)
 	end
 
 	humanoid.Health = 0
-	self:_cancelRun(player)
 end
 
-function RunManager:_cancelRun(player)
-	if not self._activeRuns[player] then
+function RunManager:_onCharacterDied(player)
+	local run = self._activeRuns[player]
+	if not run then
 		return
 	end
 
-	self._activeRuns[player] = nil
 	self._remote:FireClient(player, {
-		type = "RunCancelled",
+		type = "RunDeath",
+		checkpointIndex = run.checkpointIndex or 0,
 	})
+end
+
+function RunManager:_teleportCharacterForActiveRun(player, character)
+	task.wait()
+
+	local run = self._activeRuns[player]
+	if not run then
+		return
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+	if not humanoid or not rootPart or humanoid.Health <= 0 then
+		return
+	end
+
+	character:PivotTo(self:_getRespawnCFrame(run))
+	self._remote:FireClient(player, {
+		type = "RunRespawned",
+		checkpointIndex = run.checkpointIndex or 0,
+	})
+end
+
+function RunManager:_getRespawnCFrame(run)
+	local checkpointIndex = run.checkpointIndex or 0
+	if checkpointIndex > 0 then
+		local checkpoint = self._course.checkpoints[checkpointIndex]
+		if checkpoint then
+			return checkpoint.respawnCFrame
+		end
+	end
+
+	return self._course.startRespawnCFrame
 end
 
 function RunManager:_setLeaderstatBest(player, elapsed)

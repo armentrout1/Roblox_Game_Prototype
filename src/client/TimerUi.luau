@@ -99,10 +99,31 @@ function TimerUi.start()
 	local running = false
 	local startTime = 0
 	local bestTime = 0
+	local statusToken = 0
 
 	local function setBest(value)
 		bestTime = value or bestTime
 		hud.bestLabel.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
+	end
+
+	local function setStatus(text, color)
+		statusToken = statusToken + 1
+		hud.statusLabel.Text = text
+		hud.statusLabel.TextColor3 = color or ObbyConfig.Colors.Start
+	end
+
+	local function flashStatus(text, color, duration)
+		statusToken = statusToken + 1
+		local token = statusToken
+		hud.statusLabel.Text = text
+		hud.statusLabel.TextColor3 = color
+
+		task.delay(duration, function()
+			if running and statusToken == token then
+				hud.statusLabel.Text = "Run!"
+				hud.statusLabel.TextColor3 = ObbyConfig.Colors.Start
+			end
+		end)
 	end
 
 	RunService.RenderStepped:Connect(function()
@@ -117,24 +138,32 @@ function TimerUi.start()
 			running = true
 			startTime = payload.startTime
 			hud.timerLabel.Text = "Time 0.00s"
-			hud.statusLabel.Text = "Run!"
+			setStatus("Run!", ObbyConfig.Colors.Start)
 			hud.winPanel.Visible = false
 			setBest(payload.bestTime)
+		elseif payload.type == "CheckpointReached" then
+			if running then
+				flashStatus(string.format("Checkpoint %d!", payload.checkpointIndex), ObbyConfig.Colors.Checkpoint, 1.25)
+			end
+		elseif payload.type == "RunDeath" then
+			if running then
+				flashStatus("Respawning...", ObbyConfig.Colors.Lava, 1.5)
+			end
+		elseif payload.type == "RunRespawned" then
+			if running then
+				local message = payload.checkpointIndex > 0 and string.format("Back to checkpoint %d", payload.checkpointIndex) or "Back to start"
+				flashStatus(message, ObbyConfig.Colors.CheckpointAccent, 1.25)
+			end
 		elseif payload.type == "RunFinished" then
 			running = false
 			setBest(payload.bestTime)
 
 			local elapsedText = ObbyConfig.formatTime(payload.elapsed)
 			hud.timerLabel.Text = "Time " .. elapsedText
-			hud.statusLabel.Text = payload.isBest and "New best!" or "Finished"
+			setStatus(payload.isBest and "New best!" or "Finished", payload.isBest and ObbyConfig.Colors.Finish or ObbyConfig.Colors.Start)
 			hud.winTime.Text = "Time " .. elapsedText
 			hud.winBest.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
 			hud.winPanel.Visible = true
-		elseif payload.type == "RunCancelled" then
-			running = false
-			hud.timerLabel.Text = "Time 0.00s"
-			hud.statusLabel.Text = "Try again"
-			hud.winPanel.Visible = false
 		end
 	end)
 end
