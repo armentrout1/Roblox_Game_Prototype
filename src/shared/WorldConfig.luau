@@ -27,13 +27,13 @@ WorldConfig.ProgressiveBuffs = {
 		},
 	},
 	{
-		id = "stage_6_air_control",
+		id = "stage_6_agility_boost",
 		afterStage = 6,
-		displayName = "Air Control",
-		description = "A modest movement boost for later precision stages.",
+		displayName = "Agility Boost",
+		description = "A tiny speed and jump boost for later stages.",
 		effects = {
-			walkSpeedMultiplier = 1.04,
-			jumpPowerMultiplier = 1.04,
+			walkSpeedMultiplier = 1.03,
+			jumpPowerMultiplier = 1.03,
 		},
 	},
 	{

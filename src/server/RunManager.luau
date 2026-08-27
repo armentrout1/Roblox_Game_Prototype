@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local BuffService = require(script.Parent:WaitForChild("BuffService"))
+local BasketballService = require(script.Parent:WaitForChild("BasketballService"))
 local DevToolsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DevToolsConfig"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
@@ -75,6 +76,7 @@ function RunManager.new(course)
 	local stageManager = StageManager.new(runState, rewardService, buffService, remote)
 	local rcCarService = RcCarService.new(course.stage4, runState, remote)
 	local tsunamiService = TsunamiService.new(course.stage5, runState, remote)
+	local basketballService = BasketballService.new(course.stage6, runState, remote)
 
 	return setmetatable({
 		_course = course,
@@ -86,6 +88,7 @@ function RunManager.new(course)
 		_stageManager = stageManager,
 		_rcCarService = rcCarService,
 		_tsunamiService = tsunamiService,
+		_basketballService = basketballService,
 		_stageByNumber = indexStagesByNumber(course.worldId),
 		_bestTimes = {},
 		_spawnTokens = {},
@@ -100,6 +103,7 @@ function RunManager:start()
 	Players.PlayerRemoving:Connect(function(player)
 		self._rcCarService:cleanupPlayer(player)
 		self._tsunamiService:cleanupPlayer(player)
+		self._basketballService:cleanupPlayer(player)
 		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
 		self._spawnTokens[player] = nil
@@ -137,6 +141,7 @@ function RunManager:start()
 
 	self._rcCarService:start()
 	self._tsunamiService:start()
+	self._basketballService:start()
 end
 
 function RunManager:_setupPlayer(player)
@@ -201,6 +206,7 @@ function RunManager:_onStartTouched(hit)
 
 	local startTime = now()
 	self._rcCarService:resetPlayer(player)
+	self._basketballService:resetPlayer(player)
 	local state = self._stageManager:startWorld(player, self._course.worldId, startTime)
 	if not state then
 		return
@@ -225,6 +231,14 @@ function RunManager:_onCheckpointTouched(checkpoint, hit)
 		self._remote:FireClient(player, {
 			type = "RcNotice",
 			message = "Finish the RC maze first",
+		})
+		return
+	end
+
+	if checkpoint.requiresBasketballCompletion and not self._basketballService:isStageComplete(player) then
+		self._remote:FireClient(player, {
+			type = "BasketballNotice",
+			message = "Make all 3 shots first",
 		})
 		return
 	end
@@ -262,6 +276,7 @@ function RunManager:_onFinishTouched(hit)
 		advance = false,
 	})
 	local finalState = self._stageManager:finishRun(player)
+	self._basketballService:resetPlayer(player)
 
 	local currentBest = self._bestTimes[player]
 	local isBest = not currentBest or elapsed < currentBest
@@ -325,6 +340,7 @@ function RunManager:_jumpToStageForTesting(player, stageNumber)
 	end
 
 	self._rcCarService:resetPlayer(player)
+	self._basketballService:resetPlayer(player)
 
 	local activeBuffs = self:_getActiveBuffsBeforeStage(stageNumber)
 	local activePassiveBuffIds = {}
@@ -382,6 +398,7 @@ end
 
 function RunManager:_resetRunFromDevTools(player)
 	self._rcCarService:resetPlayer(player)
+	self._basketballService:resetPlayer(player)
 	local state = self._stageManager:resetRun(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -393,6 +410,7 @@ end
 
 function RunManager:_returnToStartFromDevTools(player)
 	self._rcCarService:endSession(player, "Returned to start")
+	self._basketballService:endShot(player, "Returned to start")
 	local state = self._runState:get(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -439,6 +457,7 @@ end
 
 function RunManager:_onCharacterDied(player)
 	self._rcCarService:endSession(player, "Death")
+	self._basketballService:endShot(player, "Death")
 	local state = self._runState:get(player)
 	if not state.isRunActive then
 		return

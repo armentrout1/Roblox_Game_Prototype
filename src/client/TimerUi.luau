@@ -333,6 +333,12 @@ function TimerUi.start()
 			else
 				setStatus(payload.message or "RC maze", ObbyConfig.Colors.Finish)
 			end
+		elseif payload.type == "BasketballNotice" then
+			if running then
+				flashStatus(payload.message or "Basketball challenge", ObbyConfig.Colors.Finish, 1.5)
+			else
+				setStatus(payload.message or "Basketball challenge", ObbyConfig.Colors.Finish)
+			end
 		elseif payload.type == "RunFinished" then
 			running = false
 			setBest(payload.bestTime)

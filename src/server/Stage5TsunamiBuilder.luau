@@ -279,23 +279,6 @@ local function createCheckpoint(parent)
 	}
 end
 
-local function createStageSixPlaceholder(parent)
-	createPart(parent, "Stage5ToStage6Connector", Vector3.new(18, 1, 22), Vector3.new(0, 10.2, 1238), STAGE_COLORS.Road, Enum.Material.Concrete)
-
-	local platform = createPart(parent, "Stage6PlaceholderPlatform", Vector3.new(36, 1, 24), Vector3.new(0, 10.2, 1260), COLORS.Moving, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 6", COLORS.Dark)
-
-	createPart(parent, "Stage6GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-13, 16.5, 1268), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage6GateRightPost", Vector3.new(2, 12, 2), Vector3.new(13, 16.5, 1268), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage6GateTop", Vector3.new(28, 2, 2), Vector3.new(0, 22.5, 1268), COLORS.Dark, Enum.Material.SmoothPlastic)
-
-	local door = createPart(parent, "Stage6ComingNextDoor", Vector3.new(23, 8, 1), Vector3.new(0, 15.5, 1269), COLORS.Start, Enum.Material.ForceField, {
-		Transparency = 0.2,
-	})
-	createSurfaceLabel(door, "STAGE 6\nBASKETBALL CHALLENGE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
-	createSurfaceLabel(door, "STAGE 6\nBASKETBALL CHALLENGE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
-end
-
 local function createHazards(parent)
 	local flood = createPart(parent, "Stage5FloodWaterHazard", Vector3.new(120, 1, 360), Vector3.new(0, 5.8, 1058), STAGE_COLORS.Water, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
@@ -315,7 +298,6 @@ function Stage5TsunamiBuilder.build(parent)
 	local safeZones = createShelters(stageFolder)
 	local wave = createWave(stageFolder)
 	local checkpoint = createCheckpoint(stageFolder)
-	createStageSixPlaceholder(stageFolder)
 	local hazards = createHazards(stageFolder)
 
 	return {

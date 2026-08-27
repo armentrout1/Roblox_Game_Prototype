@@ -12,11 +12,12 @@
 - World 1 Stage 4 - RC Car Maze is implemented as a distinct remote-control mini-game with server-owned completion and CP 4 progression.
 - Stage 4 RC camera and maze tuning pass is complete: first-start camera binding is more reliable, Chase/Aerial camera modes are available, and the maze has wider turns.
 - The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
-- World 1 Stage 5 - Tsunami Run is implemented with server-owned wave timing, explicit safe shelters, CP 5 progression, and a Stage 6 placeholder gate.
-- World 1 Stage 6 - Basketball Challenge has not been started; the current course ends at a safe Stage 6 placeholder gate.
-- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, resetting a run, and returning to the start without beginning Stage 6 work.
+- World 1 Stage 5 - Tsunami Run is implemented with server-owned wave timing, explicit safe shelters, and CP 5 progression.
+- World 1 Stage 6 - Basketball Challenge is implemented with free throw, three-pointer, and half-court shot stations, a client shot meter, server-owned scoring, CP 6 progression, and a Stage 7 placeholder gate.
+- The third progressive buff, Agility Boost, unlocks after Stage 6 through the existing `BuffService` and `WorldConfig` flow.
+- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, or Stage 6, resetting a run, and returning to the start without beginning Stage 7 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course includes Stage 1, Stage 2, Stage 3, Stage 4, and Stage 5. Reaching the Stage 5 checkpoint marks Stage 5 complete and advances run state to Stage 6 metadata, but it does not finish World 1.
+- Current course includes Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, and Stage 6. Reaching CP 6 after completing the basketball challenge marks Stage 6 complete and advances run state to Stage 7 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -35,7 +36,7 @@ World 1 is a 10-stage speedrun/obby world built primarily over lava.
 - Every 2 completed stages grants a modest passive buff for the remainder of the current run.
 - Stage 2 reward: slightly higher jumping.
 - Stage 4 reward: slightly faster movement.
-- Stage 6 reward: another modest movement or jump-related improvement.
+- Stage 6 reward: Agility Boost, a small combined movement and jump improvement.
 - Stage 8 reward: another modest final-stage-appropriate buff.
 - Buffs should be configurable and conservative so late stages remain meaningful.
 
@@ -89,6 +90,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 4 RC session service keeps mini-game completion server-authoritative while the client handles input, camera, and HUD presentation.
 - Complete: Stage 4 RC tuning pass added robust client car readiness binding, Chase/Aerial camera modes, and a more forgiving maze layout.
 - Complete: Stage 5 tsunami service keeps wave lifecycle and safe-zone validation server-authoritative while the client handles warning UI.
+- Complete: Stage 6 basketball service keeps shot order, timing validation, ball scoring, gate access, and CP 6 completion server-authoritative while the client handles meter UI and feedback.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -101,15 +103,16 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 4 - RC Car Maze.
 - Complete: Speed Boost unlock after Stage 4.
 - Complete: Stage 5 - Tsunami Run with explicit safe shelters and CP 5 checkpoint reward.
-- Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
+- Complete: Stage 6 - Basketball Challenge with three required shots, visible ball arcs, CP 6 checkpoint reward, and Agility Boost unlock.
+- The Stage 1-6 content pass is now complete; confirm checkpoint, reward, buff, respawn, and timer behavior through these first six stages before adding more content.
 
 ## World 1 - Interactive Stages
 
 - Complete: Stage 4 - RC Car Maze with player-specific RC completion gate.
 - Complete: Stage 4 tuning pass for RC camera startup, camera mode toggle, and easier maze navigation.
 - Complete: Stage 5 - Tsunami Run with shared wave cycle and per-player survival checks.
-- Not started: Stage 6 - Basketball Challenge.
-- Build Stage 6 - Basketball Challenge with shot meter and three required shots.
+- Complete: Stage 6 - Basketball Challenge with a server-validated shot meter sequence.
+- Not started: Stage 7 - Cat and Mouse.
 - Keep each mini-game behind a server-owned completion signal.
 
 ## World 1 - Advanced Stages
@@ -140,9 +143,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Continue World 1 - Interactive Stages only after Stage 1 through Stage 5 Studio testing:
+Continue World 1 - Advanced Stages only after Stage 1 through Stage 6 Studio testing:
 
-- Build Stage 6 - Basketball Challenge.
+- Build Stage 7 - Cat and Mouse.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the Stage 5 tsunami cycle, safe-zone survival, CP 5 reward, respawn orientation, and Stage 6 placeholder before adding Stage 6 content.
+- First recommended task: prototype the Stage 7 arena, escape-hole goal, and server-owned cat chase lifecycle behind a safe placeholder gate.
