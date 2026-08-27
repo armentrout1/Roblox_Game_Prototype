@@ -416,23 +416,6 @@ local function createCheckpoint(parent)
 	}
 end
 
-local function createStageSevenPlaceholder(parent)
-	createPart(parent, "Stage6ToStage7Connector", Vector3.new(18, 1, 24), Vector3.new(0, PLATFORM_TOP_Y - 0.5, 1490), COURT_COLORS.BasaltLight, Enum.Material.Concrete)
-
-	local platform = createPart(parent, "Stage7PlaceholderPlatform", Vector3.new(36, 1, 24), Vector3.new(0, PLATFORM_TOP_Y - 0.5, 1512), COLORS.Moving, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 7", COLORS.Dark, Enum.NormalId.Top, 30)
-
-	createPart(parent, "Stage7GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-13, PLATFORM_TOP_Y + 5.8, 1520), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage7GateRightPost", Vector3.new(2, 12, 2), Vector3.new(13, PLATFORM_TOP_Y + 5.8, 1520), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage7GateTop", Vector3.new(28, 2, 2), Vector3.new(0, PLATFORM_TOP_Y + 11.8, 1520), COLORS.Dark, Enum.Material.SmoothPlastic)
-
-	local door = createPart(parent, "Stage7ComingNextDoor", Vector3.new(23, 8, 1), Vector3.new(0, PLATFORM_TOP_Y + 4.8, 1521), COLORS.Start, Enum.Material.ForceField, {
-		Transparency = 0.2,
-	})
-	createSurfaceLabel(door, "STAGE 7\nCAT AND MOUSE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front, 26)
-	createSurfaceLabel(door, "STAGE 7\nCAT AND MOUSE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back, 26)
-end
-
 function Stage6BasketballBuilder.build(parent)
 	local stageFolder = Instance.new("Folder")
 	stageFolder.Name = "Stage6BasketballChallenge"
@@ -445,7 +428,6 @@ function Stage6BasketballBuilder.build(parent)
 	local stations = createStations(stageFolder)
 	local gate = createGate(stageFolder)
 	local checkpoint = createCheckpoint(stageFolder)
-	createStageSevenPlaceholder(stageFolder)
 
 	local ballsFolder = Instance.new("Folder")
 	ballsFolder.Name = "Stage6PlayerBasketballs"

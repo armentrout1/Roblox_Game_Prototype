@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 
 local BuffService = require(script.Parent:WaitForChild("BuffService"))
 local BasketballService = require(script.Parent:WaitForChild("BasketballService"))
+local CatMouseService = require(script.Parent:WaitForChild("CatMouseService"))
 local DevToolsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DevToolsConfig"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
@@ -77,6 +78,7 @@ function RunManager.new(course)
 	local rcCarService = RcCarService.new(course.stage4, runState, remote)
 	local tsunamiService = TsunamiService.new(course.stage5, runState, remote)
 	local basketballService = BasketballService.new(course.stage6, runState, remote)
+	local catMouseService = CatMouseService.new(course.stage7, runState, remote)
 
 	return setmetatable({
 		_course = course,
@@ -89,6 +91,7 @@ function RunManager.new(course)
 		_rcCarService = rcCarService,
 		_tsunamiService = tsunamiService,
 		_basketballService = basketballService,
+		_catMouseService = catMouseService,
 		_stageByNumber = indexStagesByNumber(course.worldId),
 		_bestTimes = {},
 		_spawnTokens = {},
@@ -104,6 +107,7 @@ function RunManager:start()
 		self._rcCarService:cleanupPlayer(player)
 		self._tsunamiService:cleanupPlayer(player)
 		self._basketballService:cleanupPlayer(player)
+		self._catMouseService:cleanupPlayer(player)
 		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
 		self._spawnTokens[player] = nil
@@ -142,6 +146,7 @@ function RunManager:start()
 	self._rcCarService:start()
 	self._tsunamiService:start()
 	self._basketballService:start()
+	self._catMouseService:start()
 end
 
 function RunManager:_setupPlayer(player)
@@ -207,6 +212,7 @@ function RunManager:_onStartTouched(hit)
 	local startTime = now()
 	self._rcCarService:resetPlayer(player)
 	self._basketballService:resetPlayer(player)
+	self._catMouseService:resetPlayer(player)
 	local state = self._stageManager:startWorld(player, self._course.worldId, startTime)
 	if not state then
 		return
@@ -243,6 +249,14 @@ function RunManager:_onCheckpointTouched(checkpoint, hit)
 		return
 	end
 
+	if checkpoint.requiresCatMouseCompletion and not self._catMouseService:isStageComplete(player) then
+		self._remote:FireClient(player, {
+			type = "CatMouseNotice",
+			message = "Escape the cat first",
+		})
+		return
+	end
+
 	local result = self._stageManager:reachCheckpoint(player, checkpoint)
 	if not result then
 		return
@@ -257,6 +271,10 @@ function RunManager:_onCheckpointTouched(checkpoint, hit)
 
 	if checkpoint.completesStage then
 		self._stageManager:completeStage(player, checkpoint.stageId or self._runState:get(player).currentStageId)
+	end
+
+	if checkpoint.requiresCatMouseCompletion then
+		self._catMouseService:endSession(player, "Checkpoint reached")
 	end
 end
 
@@ -277,6 +295,7 @@ function RunManager:_onFinishTouched(hit)
 	})
 	local finalState = self._stageManager:finishRun(player)
 	self._basketballService:resetPlayer(player)
+	self._catMouseService:resetPlayer(player)
 
 	local currentBest = self._bestTimes[player]
 	local isBest = not currentBest or elapsed < currentBest
@@ -341,6 +360,7 @@ function RunManager:_jumpToStageForTesting(player, stageNumber)
 
 	self._rcCarService:resetPlayer(player)
 	self._basketballService:resetPlayer(player)
+	self._catMouseService:resetPlayer(player)
 
 	local activeBuffs = self:_getActiveBuffsBeforeStage(stageNumber)
 	local activePassiveBuffIds = {}
@@ -399,6 +419,7 @@ end
 function RunManager:_resetRunFromDevTools(player)
 	self._rcCarService:resetPlayer(player)
 	self._basketballService:resetPlayer(player)
+	self._catMouseService:resetPlayer(player)
 	local state = self._stageManager:resetRun(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -411,6 +432,7 @@ end
 function RunManager:_returnToStartFromDevTools(player)
 	self._rcCarService:endSession(player, "Returned to start")
 	self._basketballService:endShot(player, "Returned to start")
+	self._catMouseService:endSession(player, "Returned to start")
 	local state = self._runState:get(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -458,6 +480,7 @@ end
 function RunManager:_onCharacterDied(player)
 	self._rcCarService:endSession(player, "Death")
 	self._basketballService:endShot(player, "Death")
+	self._catMouseService:endSession(player, "Death")
 	local state = self._runState:get(player)
 	if not state.isRunActive then
 		return

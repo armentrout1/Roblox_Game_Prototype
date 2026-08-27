@@ -13,12 +13,14 @@
 - Stage 4 RC camera and maze tuning pass is complete: first-start camera binding is more reliable, Chase/Aerial camera modes are available, and the maze has wider turns.
 - The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 5 - Tsunami Run is implemented with server-owned wave timing, explicit safe shelters, and CP 5 progression.
-- World 1 Stage 6 - Basketball Challenge is implemented with free throw, three-pointer, and half-court shot stations, a client shot meter, server-owned scoring, CP 6 progression, and a Stage 7 placeholder gate.
+- World 1 Stage 6 - Basketball Challenge is implemented with free throw, three-pointer, and half-court shot stations, a client shot meter, server-owned scoring, and CP 6 progression.
 - Stage 6 basketball polish pass is complete: elevated court arena, clearer court markings, hold/release shooting, timing-quality feedback, improved shot arcs, rim/backboard interaction, and a subtle shooting camera.
 - The third progressive buff, Agility Boost, unlocks after Stage 6 through the existing `BuffService` and `WorldConfig` flow.
-- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, or Stage 6, resetting a run, and returning to the start without beginning Stage 7 work.
+- World 1 Stage 7 - Cat and Mouse is implemented with a server-owned cat chase, helper distraction validation, cartoon capture/spit-out retry flow, escape-hole objective, CP 7 progression, and a Stage 8 placeholder.
+- Developer-only Studio testing UI is implemented for jumping to Stage 1 through Stage 7, resetting a run, and returning to the start without beginning Stage 8 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course includes Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, and Stage 6. Reaching CP 6 after completing the basketball challenge marks Stage 6 complete and advances run state to Stage 7 metadata, but it does not finish World 1.
+- Stage 7 timer rule: if the cat captures a player, the 15-second captured/spit-out retry time counts against the active run timer; the run does not pause or reset.
+- Current course includes Stage 1 through Stage 7, plus a visual-only Stage 8 placeholder. Reaching CP 7 after escaping the cat marks Stage 7 complete and advances run state to Stage 8 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -93,6 +95,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 5 tsunami service keeps wave lifecycle and safe-zone validation server-authoritative while the client handles warning UI.
 - Complete: Stage 6 basketball service keeps shot order, timing validation, ball scoring, gate access, and CP 6 completion server-authoritative while the client handles meter UI and feedback.
 - Complete: Stage 6 polish pass centralizes basketball tuning in `BasketballConfig` and improves court visuals, shooting presentation, shot quality, and camera cleanup without starting Stage 7.
+- Complete: Stage 7 cat-and-mouse service keeps cat AI, catch checks, helper distraction validation, capture timing, escape validation, and CP 7 gating server-authoritative while the client handles temporary chase feedback UI.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -107,7 +110,8 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 5 - Tsunami Run with explicit safe shelters and CP 5 checkpoint reward.
 - Complete: Stage 6 - Basketball Challenge with three required shots, visible ball arcs, CP 6 checkpoint reward, and Agility Boost unlock.
 - Complete: Stage 6 basketball polish pass.
-- The Stage 1-6 content pass is now complete; confirm checkpoint, reward, buff, respawn, and timer behavior through these first six stages before adding more content.
+- Complete: Stage 7 - Cat and Mouse with escape-hole completion, helper distraction, capture/spit-out retry, CP 7 checkpoint reward, and Stage 8 placeholder.
+- The Stage 1-7 content pass is now complete; confirm checkpoint, reward, buff, respawn, timer, and multiplayer behavior through these first seven stages before adding more content.
 
 ## World 1 - Interactive Stages
 
@@ -116,12 +120,12 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 5 - Tsunami Run with shared wave cycle and per-player survival checks.
 - Complete: Stage 6 - Basketball Challenge with a server-validated shot meter sequence.
 - Complete: Stage 6 basketball polish pass with elevated court presentation and hold/release timing.
-- Not started: Stage 7 - Cat and Mouse.
+- Complete: Stage 7 - Cat and Mouse with independent per-player cat sessions and server-validated friend distraction.
 - Keep each mini-game behind a server-owned completion signal.
 
 ## World 1 - Advanced Stages
 
-- Build Stage 7 - Cat and Mouse, including multiplayer distraction behavior and comedic catch/spit-out sequence.
+- Complete: Stage 7 - Cat and Mouse, including multiplayer distraction behavior and comedic catch/spit-out sequence.
 - Build Stage 8 - Roller Coaster Lean with cart balance controls.
 - Build Stage 9 - Hacky Sack Timing Game with 15-success streak.
 - Build Stage 10 - Final Speed Race with fictional rival, speed coil, finish sequence, and completion reward.
@@ -147,9 +151,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Continue World 1 - Advanced Stages only after Stage 1 through Stage 6 Studio testing:
+Continue World 1 - Advanced Stages only after Stage 1 through Stage 7 Studio testing:
 
-- Build Stage 7 - Cat and Mouse.
+- Build Stage 8 - Roller Coaster Lean.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- First recommended task: prototype the Stage 7 arena, escape-hole goal, and server-owned cat chase lifecycle behind a safe placeholder gate.
+- First recommended task: prototype the Stage 8 cart lane, cart spawn/control handoff, and lean/fall validation behind the existing Stage 8 placeholder.

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
+local CatMouseConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("CatMouseConfig"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 
 local TimerUi = {}
@@ -338,6 +339,12 @@ function TimerUi.start()
 				flashStatus(payload.message or "Basketball challenge", ObbyConfig.Colors.Finish, 1.5)
 			else
 				setStatus(payload.message or "Basketball challenge", ObbyConfig.Colors.Finish)
+			end
+		elseif payload.type == CatMouseConfig.Messages.Notice then
+			if running then
+				flashStatus(payload.message or "Cat and Mouse", ObbyConfig.Colors.Finish, 1.5)
+			else
+				setStatus(payload.message or "Cat and Mouse", ObbyConfig.Colors.Finish)
 			end
 		elseif payload.type == "RunFinished" then
 			running = false
