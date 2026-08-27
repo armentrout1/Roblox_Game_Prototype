@@ -2,12 +2,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
+local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local CourseBuilder = {}
 
 local COLORS = ObbyConfig.Colors
 local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, -1)
 local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -4)
+local PROTOTYPE_WORLD_ID = WorldConfig.CurrentWorldId
+local PROTOTYPE_STAGE_ID = WorldConfig.Worlds[PROTOTYPE_WORLD_ID].stages[1].id
 
 local function createPlayerFacingCFrame(position)
 	return CFrame.lookAt(position, position + PLAYER_SPAWN_LOOK_DIRECTION)
@@ -158,7 +161,10 @@ local function createCheckpoint(parent, index, size, position)
 	createSurfaceLabel(pad, "CHECKPOINT")
 
 	return {
+		id = string.format("prototype_checkpoint_%d", index),
 		index = index,
+		order = index,
+		stageId = PROTOTYPE_STAGE_ID,
 		part = pad,
 		base = base,
 		respawnCFrame = createPlayerFacingCFrame(position + Vector3.new(0, 5, 0)),
@@ -249,6 +255,9 @@ function CourseBuilder.build()
 
 	return {
 		folder = courseFolder,
+		worldId = PROTOTYPE_WORLD_ID,
+		startStageId = PROTOTYPE_STAGE_ID,
+		finishStageId = PROTOTYPE_STAGE_ID,
 		startPad = startPad,
 		startSpawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
 		startRespawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),

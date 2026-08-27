@@ -4,6 +4,7 @@
 
 - Core playable obby prototype is complete.
 - Checkpoints and respawn are implemented, with Studio verification still pending.
+- Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
 - Current course remains the Milestone 1/2 prototype until World 1 content is built in smaller passes.
 
@@ -68,10 +69,13 @@ The game should evolve from a single generated prototype into reusable systems:
 
 - Complete: existing playable obby prototype.
 - Complete: checkpoints and respawn implementation.
-- Next: introduce World/Stage progression architecture around the current prototype.
-- Add a coin/reward framework that can award checkpoint and completion coins once per run.
-- Add a buff/passive framework for Stage 2/4/6/8 unlocks.
-- Keep all gameplay authority on the server.
+- Complete: World/Stage progression architecture around the current prototype.
+- Complete: `PlayerRunState` as the server-owned source of active run data.
+- Complete: checkpoint reward framework awarding 150 session coins once per checkpoint per run.
+- Complete: world completion reward API for future Stage 10 completion.
+- Complete: configurable passive buff framework for Stage 2/4/6/8 unlocks.
+- Complete: stage module/controller pattern documentation.
+- Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
 
@@ -114,10 +118,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Build the Foundation architecture pass before World 1 content:
+Begin World 1 - First Content Pass only after approval:
 
-- Add `WorldManager`/`StageManager` or similarly scoped server modules.
-- Introduce `PlayerRunState` as the single source of truth for active run data.
-- Move checkpoint state into that run state without changing the current prototype flow.
-- Add a server-owned reward API with no persistent saving yet.
-- Add configurable passive buff definitions, but apply only after stage-completion plumbing exists.
+- Build Stage 1 - Lava Boulders as the first real World 1 stage.
+- Use the new `StageManager` completion API instead of awarding progress directly.
+- Keep checkpoint placement and rewards server-owned.
+- Verify the prototype still works before replacing or extending it with Stage 1 content.

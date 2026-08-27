@@ -41,7 +41,7 @@ local function createHud()
 	panel.BackgroundTransparency = 0.14
 	panel.BorderSizePixel = 0
 	panel.Position = UDim2.fromScale(0.5, 0.035)
-	panel.Size = UDim2.fromOffset(380, 92)
+	panel.Size = UDim2.fromOffset(430, 118)
 	panel.Parent = screenGui
 
 	local corner = Instance.new("UICorner")
@@ -55,8 +55,9 @@ local function createHud()
 	stroke.Parent = panel
 
 	local timerLabel = createText(panel, "TimerLabel", "Time 0.00s", UDim2.new(1, -24, 0, 42), UDim2.fromOffset(12, 8), ObbyConfig.Colors.White)
-	local bestLabel = createText(panel, "BestLabel", "Best --", UDim2.new(0.5, -18, 0, 28), UDim2.fromOffset(16, 55), ObbyConfig.Colors.Finish)
-	local statusLabel = createText(panel, "StatusLabel", "Touch GO to start", UDim2.new(0.5, -18, 0, 28), UDim2.new(0.5, 2, 0, 55), ObbyConfig.Colors.Start)
+	local bestLabel = createText(panel, "BestLabel", "Best --", UDim2.new(0.5, -20, 0, 26), UDim2.fromOffset(16, 54), ObbyConfig.Colors.Finish)
+	local coinsLabel = createText(panel, "CoinsLabel", "Coins 0", UDim2.new(0.5, -20, 0, 26), UDim2.new(0.5, 4, 0, 54), ObbyConfig.Colors.CheckpointAccent)
+	local statusLabel = createText(panel, "StatusLabel", "Touch GO to start", UDim2.new(1, -32, 0, 26), UDim2.fromOffset(16, 82), ObbyConfig.Colors.Start)
 
 	local winPanel = Instance.new("Frame")
 	winPanel.Name = "WinPanel"
@@ -81,14 +82,17 @@ local function createHud()
 	createText(winPanel, "WinTitle", "You Win!", UDim2.new(1, -32, 0, 64), UDim2.fromOffset(16, 18), ObbyConfig.Colors.Finish)
 	local winTime = createText(winPanel, "WinTime", "Time 0.00s", UDim2.new(1, -32, 0, 46), UDim2.fromOffset(16, 88), ObbyConfig.Colors.White)
 	local winBest = createText(winPanel, "WinBest", "Best --", UDim2.new(1, -32, 0, 38), UDim2.fromOffset(16, 140), ObbyConfig.Colors.Start)
+	local winCoins = createText(winPanel, "WinCoins", "Run coins 0", UDim2.new(1, -32, 0, 26), UDim2.fromOffset(16, 176), ObbyConfig.Colors.CheckpointAccent)
 
 	return {
 		timerLabel = timerLabel,
 		bestLabel = bestLabel,
+		coinsLabel = coinsLabel,
 		statusLabel = statusLabel,
 		winPanel = winPanel,
 		winTime = winTime,
 		winBest = winBest,
+		winCoins = winCoins,
 	}
 end
 
@@ -99,11 +103,17 @@ function TimerUi.start()
 	local running = false
 	local startTime = 0
 	local bestTime = 0
+	local sessionCoins = 0
 	local statusToken = 0
 
 	local function setBest(value)
 		bestTime = value or bestTime
 		hud.bestLabel.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
+	end
+
+	local function setCoins(value)
+		sessionCoins = value or sessionCoins
+		hud.coinsLabel.Text = "Coins " .. tostring(sessionCoins)
 	end
 
 	local function setStatus(text, color)
@@ -141,9 +151,19 @@ function TimerUi.start()
 			setStatus("Run!", ObbyConfig.Colors.Start)
 			hud.winPanel.Visible = false
 			setBest(payload.bestTime)
+			setCoins(payload.sessionCoins)
+		elseif payload.type == "CoinAwarded" then
+			setCoins(payload.sessionCoins)
+			if running then
+				flashStatus(string.format("+%d coins", payload.amount), ObbyConfig.Colors.CheckpointAccent, 1)
+			end
 		elseif payload.type == "CheckpointReached" then
 			if running then
-				flashStatus(string.format("Checkpoint %d!", payload.checkpointIndex), ObbyConfig.Colors.Checkpoint, 1.25)
+				local text = string.format("Checkpoint %d!", payload.checkpointIndex)
+				if payload.coinAward and payload.coinAward > 0 then
+					text = text .. string.format(" +%d coins", payload.coinAward)
+				end
+				flashStatus(text, ObbyConfig.Colors.Checkpoint, 1.25)
 			end
 		elseif payload.type == "RunDeath" then
 			if running then
@@ -154,15 +174,29 @@ function TimerUi.start()
 				local message = payload.checkpointIndex > 0 and string.format("Back to checkpoint %d", payload.checkpointIndex) or "Back to start"
 				flashStatus(message, ObbyConfig.Colors.CheckpointAccent, 1.25)
 			end
+		elseif payload.type == "StageCompleted" then
+			if running then
+				flashStatus(string.format("Stage %d complete!", payload.stageNumber), ObbyConfig.Colors.Finish, 1.25)
+			end
+		elseif payload.type == "PassiveUnlocked" then
+			if running then
+				flashStatus(payload.displayName .. " unlocked!", ObbyConfig.Colors.CheckpointAccent, 1.5)
+			end
+		elseif payload.type == "WorldCompleted" then
+			if running then
+				flashStatus("World complete!", ObbyConfig.Colors.Finish, 1.5)
+			end
 		elseif payload.type == "RunFinished" then
 			running = false
 			setBest(payload.bestTime)
+			setCoins(payload.sessionCoins)
 
 			local elapsedText = ObbyConfig.formatTime(payload.elapsed)
 			hud.timerLabel.Text = "Time " .. elapsedText
 			setStatus(payload.isBest and "New best!" or "Finished", payload.isBest and ObbyConfig.Colors.Finish or ObbyConfig.Colors.Start)
 			hud.winTime.Text = "Time " .. elapsedText
 			hud.winBest.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
+			hud.winCoins.Text = "Run coins " .. tostring(payload.coinsEarnedThisRun or 0)
 			hud.winPanel.Visible = true
 		end
 	end)

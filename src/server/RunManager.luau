@@ -1,7 +1,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BuffService = require(script.Parent:WaitForChild("BuffService"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
+local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
+local RewardService = require(script.Parent:WaitForChild("RewardService"))
+local StageManager = require(script.Parent:WaitForChild("StageManager"))
 
 local RunManager = {}
 RunManager.__index = RunManager
@@ -32,10 +36,18 @@ function RunManager.new(course)
 		remote.Parent = ReplicatedStorage
 	end
 
+	local runState = PlayerRunState.new()
+	local rewardService = RewardService.new(runState)
+	local buffService = BuffService.new(runState)
+	local stageManager = StageManager.new(runState, rewardService, buffService, remote)
+
 	return setmetatable({
 		_course = course,
 		_remote = remote,
-		_activeRuns = {},
+		_runState = runState,
+		_rewardService = rewardService,
+		_buffService = buffService,
+		_stageManager = stageManager,
 		_bestTimes = {},
 	}, RunManager)
 end
@@ -46,7 +58,7 @@ function RunManager:start()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
-		self._activeRuns[player] = nil
+		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
 	end)
 
@@ -76,6 +88,9 @@ function RunManager:start()
 end
 
 function RunManager:_setupPlayer(player)
+	self._runState:setupPlayer(player)
+	self._rewardService:setupPlayer(player)
+
 	local leaderstats = player:FindFirstChild("leaderstats")
 	if not leaderstats then
 		leaderstats = Instance.new("Folder")
@@ -106,11 +121,13 @@ function RunManager:_watchCharacter(player, character)
 		return
 	end
 
-	if self._activeRuns[player] then
+	if self._runState:isRunActive(player) then
+		self._buffService:applyCurrentBuffs(player, character)
 		task.defer(function()
 			self:_teleportCharacterForActiveRun(player, character)
 		end)
 	else
+		self._buffService:resetCharacter(player, character)
 		task.defer(function()
 			self:_teleportCharacterToStart(player, character)
 		end)
@@ -123,20 +140,22 @@ end
 
 function RunManager:_onStartTouched(hit)
 	local player, humanoid = findPlayerFromHit(hit)
-	if not player or humanoid.Health <= 0 or self._activeRuns[player] then
+	if not player or humanoid.Health <= 0 or self._runState:isRunActive(player) then
 		return
 	end
 
 	local startTime = now()
-	self._activeRuns[player] = {
-		startTime = startTime,
-		checkpointIndex = 0,
-	}
+	local state = self._stageManager:startWorld(player, self._course.worldId, startTime)
+	if not state then
+		return
+	end
 
 	self._remote:FireClient(player, {
 		type = "RunStarted",
-		startTime = startTime,
+		startTime = state.runStartTime,
 		bestTime = self._bestTimes[player] or 0,
+		sessionCoins = state.sessionCoins,
+		coinsEarnedThisRun = state.coinsEarnedThisRun,
 	})
 end
 
@@ -146,20 +165,16 @@ function RunManager:_onCheckpointTouched(checkpoint, hit)
 		return
 	end
 
-	local run = self._activeRuns[player]
-	if not run then
+	local result = self._stageManager:reachCheckpoint(player, checkpoint)
+	if not result then
 		return
 	end
 
-	local previousCheckpointIndex = run.checkpointIndex or 0
-	if checkpoint.index <= previousCheckpointIndex then
-		return
-	end
-
-	run.checkpointIndex = checkpoint.index
 	self._remote:FireClient(player, {
 		type = "CheckpointReached",
-		checkpointIndex = checkpoint.index,
+		checkpointIndex = result.checkpointIndex,
+		coinAward = result.reward and result.reward.amount or 0,
+		coinsEarnedThisRun = result.reward and result.reward.coinsEarnedThisRun or self._runState:get(player).coinsEarnedThisRun,
 	})
 end
 
@@ -169,13 +184,16 @@ function RunManager:_onFinishTouched(hit)
 		return
 	end
 
-	local run = self._activeRuns[player]
-	if not run then
+	local state = self._runState:get(player)
+	if not state.isRunActive then
 		return
 	end
 
-	local elapsed = ObbyConfig.roundTime(now() - run.startTime)
-	self._activeRuns[player] = nil
+	local elapsed = ObbyConfig.roundTime(now() - state.runStartTime)
+	self._stageManager:completeStage(player, self._course.finishStageId or state.currentStageId, {
+		advance = false,
+	})
+	local finalState = self._stageManager:finishRun(player)
 
 	local currentBest = self._bestTimes[player]
 	local isBest = not currentBest or elapsed < currentBest
@@ -189,6 +207,8 @@ function RunManager:_onFinishTouched(hit)
 		elapsed = elapsed,
 		bestTime = self._bestTimes[player] or elapsed,
 		isBest = isBest,
+		coinsEarnedThisRun = finalState.coinsEarnedThisRun,
+		sessionCoins = finalState.sessionCoins,
 	})
 end
 
@@ -202,36 +222,36 @@ function RunManager:_onHazardTouched(hit)
 end
 
 function RunManager:_onCharacterDied(player)
-	local run = self._activeRuns[player]
-	if not run then
+	local state = self._runState:get(player)
+	if not state.isRunActive then
 		return
 	end
 
 	self._remote:FireClient(player, {
 		type = "RunDeath",
-		checkpointIndex = run.checkpointIndex or 0,
+		checkpointIndex = state.latestCheckpoint or 0,
 	})
 end
 
 function RunManager:_teleportCharacterForActiveRun(player, character)
 	task.wait()
 
-	local run = self._activeRuns[player]
-	if not run then
+	local state = self._runState:get(player)
+	if not state.isRunActive then
 		return
 	end
 
-	self:_teleportCharacter(character, self:_getRespawnCFrame(run))
+	self:_teleportCharacter(character, self:_getRespawnCFrame(state))
 	self._remote:FireClient(player, {
 		type = "RunRespawned",
-		checkpointIndex = run.checkpointIndex or 0,
+		checkpointIndex = state.latestCheckpoint or 0,
 	})
 end
 
 function RunManager:_teleportCharacterToStart(player, character)
 	task.wait()
 
-	if self._activeRuns[player] then
+	if self._runState:isRunActive(player) then
 		return
 	end
 
@@ -252,8 +272,8 @@ function RunManager:_teleportCharacter(character, targetCFrame)
 	character:PivotTo(targetCFrame)
 end
 
-function RunManager:_getRespawnCFrame(run)
-	local checkpointIndex = run.checkpointIndex or 0
+function RunManager:_getRespawnCFrame(state)
+	local checkpointIndex = state.latestCheckpoint or 0
 	if checkpointIndex > 0 then
 		local checkpoint = self._course.checkpoints[checkpointIndex]
 		if checkpoint then
