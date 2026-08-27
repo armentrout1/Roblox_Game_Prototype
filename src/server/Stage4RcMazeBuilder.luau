@@ -322,29 +322,11 @@ local function createCheckpoint(parent)
 	}
 end
 
-local function createStageFivePlaceholder(parent)
-	createPart(parent, "Stage4ToStage5Connector", Vector3.new(18, 1, 22), Vector3.new(0, 10.2, 875), STAGE_COLORS.Road, Enum.Material.Concrete)
-
-	local platform = createPart(parent, "Stage5PlaceholderPlatform", Vector3.new(34, 1, 24), Vector3.new(0, 10.2, 894), COLORS.Moving, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 5", COLORS.Dark)
-
-	createPart(parent, "Stage5GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-12, 16.5, 902), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage5GateRightPost", Vector3.new(2, 12, 2), Vector3.new(12, 16.5, 902), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage5GateTop", Vector3.new(26, 2, 2), Vector3.new(0, 22.5, 902), COLORS.Dark, Enum.Material.SmoothPlastic)
-
-	local door = createPart(parent, "Stage5ComingNextDoor", Vector3.new(21, 8, 1), Vector3.new(0, 15.5, 903), COLORS.Start, Enum.Material.ForceField, {
-		Transparency = 0.2,
-	})
-	createSurfaceLabel(door, "STAGE 5\nTSUNAMI RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
-	createSurfaceLabel(door, "STAGE 5\nTSUNAMI RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
-end
-
 function Stage4RcMazeBuilder.build(parent)
 	local entrance = createEntrance(parent)
 	local gate = createGate(parent)
 	local maze = createMaze(parent)
 	local checkpoint = createCheckpoint(parent)
-	createStageFivePlaceholder(parent)
 
 	return {
 		stageId = STAGE_4_ID,

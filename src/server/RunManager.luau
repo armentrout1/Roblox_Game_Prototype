@@ -9,6 +9,7 @@ local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
 local RcCarService = require(script.Parent:WaitForChild("RcCarService"))
 local RewardService = require(script.Parent:WaitForChild("RewardService"))
 local StageManager = require(script.Parent:WaitForChild("StageManager"))
+local TsunamiService = require(script.Parent:WaitForChild("TsunamiService"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local RunManager = {}
@@ -73,6 +74,7 @@ function RunManager.new(course)
 	local buffService = BuffService.new(runState)
 	local stageManager = StageManager.new(runState, rewardService, buffService, remote)
 	local rcCarService = RcCarService.new(course.stage4, runState, remote)
+	local tsunamiService = TsunamiService.new(course.stage5, runState, remote)
 
 	return setmetatable({
 		_course = course,
@@ -83,6 +85,7 @@ function RunManager.new(course)
 		_buffService = buffService,
 		_stageManager = stageManager,
 		_rcCarService = rcCarService,
+		_tsunamiService = tsunamiService,
 		_stageByNumber = indexStagesByNumber(course.worldId),
 		_bestTimes = {},
 		_spawnTokens = {},
@@ -96,6 +99,7 @@ function RunManager:start()
 
 	Players.PlayerRemoving:Connect(function(player)
 		self._rcCarService:cleanupPlayer(player)
+		self._tsunamiService:cleanupPlayer(player)
 		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
 		self._spawnTokens[player] = nil
@@ -132,6 +136,7 @@ function RunManager:start()
 	end)
 
 	self._rcCarService:start()
+	self._tsunamiService:start()
 end
 
 function RunManager:_setupPlayer(player)

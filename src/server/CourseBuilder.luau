@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local Stage3WallRunBuilder = require(script.Parent:WaitForChild("Stage3WallRunBuilder"))
 local Stage4RcMazeBuilder = require(script.Parent:WaitForChild("Stage4RcMazeBuilder"))
+local Stage5TsunamiBuilder = require(script.Parent:WaitForChild("Stage5TsunamiBuilder"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local CourseBuilder = {}
@@ -626,6 +627,11 @@ function CourseBuilder.build()
 	table.insert(checkpoints, stage3Data.checkpoint)
 	local stage4Data = Stage4RcMazeBuilder.build(courseFolder)
 	table.insert(checkpoints, stage4Data.checkpoint)
+	local stage5Data = Stage5TsunamiBuilder.build(courseFolder)
+	table.insert(checkpoints, stage5Data.checkpoint)
+	for _, hazard in ipairs(stage5Data.hazards or {}) do
+		table.insert(hazards, hazard)
+	end
 
 	local startCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION)
 	local stageStarts = {
@@ -657,6 +663,13 @@ function CourseBuilder.build()
 			latestCheckpoint = checkpoints[3].index,
 			latestCheckpointId = checkpoints[3].id,
 		},
+		[5] = {
+			stageNumber = 5,
+			stageId = stage5Data.stageStart.stageId,
+			cframe = stage5Data.stageStart.cframe,
+			latestCheckpoint = checkpoints[4].index,
+			latestCheckpointId = checkpoints[4].id,
+		},
 	}
 
 	return {
@@ -671,6 +684,7 @@ function CourseBuilder.build()
 		checkpoints = checkpoints,
 		stageStarts = stageStarts,
 		stage4 = stage4Data,
+		stage5 = stage5Data,
 		hazards = hazards,
 	}
 end

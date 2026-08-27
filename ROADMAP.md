@@ -12,10 +12,11 @@
 - World 1 Stage 4 - RC Car Maze is implemented as a distinct remote-control mini-game with server-owned completion and CP 4 progression.
 - Stage 4 RC camera and maze tuning pass is complete: first-start camera binding is more reliable, Chase/Aerial camera modes are available, and the maze has wider turns.
 - The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
-- World 1 Stage 5 - Tsunami Run has not been started; the current course ends at a safe Stage 5 placeholder gate.
-- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, resetting a run, and returning to the start without beginning Stage 5 work.
+- World 1 Stage 5 - Tsunami Run is implemented with server-owned wave timing, explicit safe shelters, CP 5 progression, and a Stage 6 placeholder gate.
+- World 1 Stage 6 - Basketball Challenge has not been started; the current course ends at a safe Stage 6 placeholder gate.
+- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, resetting a run, and returning to the start without beginning Stage 6 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course includes Stage 1, Stage 2, Stage 3, and Stage 4. Reaching the Stage 4 checkpoint marks Stage 4 complete and advances run state to Stage 5 metadata, but it does not finish World 1.
+- Current course includes Stage 1, Stage 2, Stage 3, Stage 4, and Stage 5. Reaching the Stage 5 checkpoint marks Stage 5 complete and advances run state to Stage 6 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -87,6 +88,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: developer-only stage selector for Studio testing of currently implemented stages.
 - Complete: Stage 4 RC session service keeps mini-game completion server-authoritative while the client handles input, camera, and HUD presentation.
 - Complete: Stage 4 RC tuning pass added robust client car readiness binding, Chase/Aerial camera modes, and a more forgiving maze layout.
+- Complete: Stage 5 tsunami service keeps wave lifecycle and safe-zone validation server-authoritative while the client handles warning UI.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -98,14 +100,15 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: developer tooling to jump directly into Stage 1, Stage 2, Stage 3, or Stage 4 test states without awarding skipped checkpoint coins.
 - Complete: Stage 4 - RC Car Maze.
 - Complete: Speed Boost unlock after Stage 4.
+- Complete: Stage 5 - Tsunami Run with explicit safe shelters and CP 5 checkpoint reward.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
 
 ## World 1 - Interactive Stages
 
 - Complete: Stage 4 - RC Car Maze with player-specific RC completion gate.
 - Complete: Stage 4 tuning pass for RC camera startup, camera mode toggle, and easier maze navigation.
-- Not started: Stage 5 - Tsunami Run.
-- Build Stage 5 - Tsunami Run with safe areas.
+- Complete: Stage 5 - Tsunami Run with shared wave cycle and per-player survival checks.
+- Not started: Stage 6 - Basketball Challenge.
 - Build Stage 6 - Basketball Challenge with shot meter and three required shots.
 - Keep each mini-game behind a server-owned completion signal.
 
@@ -137,9 +140,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Continue World 1 - Interactive Stages only after Stage 1 through Stage 4 Studio testing:
+Continue World 1 - Interactive Stages only after Stage 1 through Stage 5 Studio testing:
 
-- Build Stage 5 - Tsunami Run.
+- Build Stage 6 - Basketball Challenge.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the Stage 4 RC car, CP 4 reward, Speed Boost unlock, respawn orientation, and Stage 5 placeholder before adding Stage 5 content.
+- Verify the Stage 5 tsunami cycle, safe-zone survival, CP 5 reward, respawn orientation, and Stage 6 placeholder before adding Stage 6 content.
