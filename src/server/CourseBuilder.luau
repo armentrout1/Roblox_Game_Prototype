@@ -22,7 +22,6 @@ local STAGE_2_START_POSITION = Vector3.new(0, 10.2, 195)
 local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
 local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
 local STAGE_3_FIRST_TARGET_POSITION = Vector3.new(0, 12, 382)
-local STAGE_2_MISSING_NOOB_POSTER_ASSET_ID = "10498795145"
 
 local LAVA_FIELD = {
 	size = Vector3.new(124, 0.6, 735),
@@ -544,6 +543,17 @@ local function scaleRockClone(clone, targetSize)
 	clone:ScaleTo(scale)
 end
 
+local function getTemplateRockParts(template)
+	local rockParts = {}
+	for _, descendant in ipairs(template:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			table.insert(rockParts, descendant)
+		end
+	end
+
+	return rockParts
+end
+
 local function hideRockTemplate(template)
 	for _, descendant in ipairs(template:GetDescendants()) do
 		if descendant:IsA("BasePart") then
@@ -605,13 +615,16 @@ createTemplateNoob = function(parent, template, name, targetSize, targetCFrame)
 	return clone
 end
 
-local function createTemplateBoulder(parent, template, index, visualSize, boulderCFrame)
-	local clone = template:Clone()
+local function createTemplateBoulder(parent, rockParts, index, visualSize, boulderCFrame)
+	local sourceRock = rockParts[((index - 1) % #rockParts) + 1]
+	local clone = sourceRock:Clone()
 	clone.Name = string.format("Stage1Boulder%02d", index)
+	clone.Anchored = true
+	clone.CanCollide = false
+	clone.CanTouch = false
+	clone.Size = visualSize
+	clone.CFrame = boulderCFrame
 	clone.Parent = parent
-	prepareRockClone(clone)
-	scaleRockClone(clone, visualSize)
-	clone:PivotTo(boulderCFrame)
 
 	return clone
 end
@@ -624,12 +637,12 @@ local function createFallbackBoulder(parent, index, visualSize, boulderCFrame)
 	})
 end
 
-local function createBoulder(parent, index, config, template)
+local function createBoulder(parent, index, config, rockParts)
 	local rotation = config.rotation or Vector3.zero
 	local visualSize = getBoulderVisualSize(config, index)
 	local boulderCFrame = CFrame.new(config.position) * CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 
-	local boulder = if template then createTemplateBoulder(parent, template, index, visualSize, boulderCFrame) else createFallbackBoulder(parent, index, visualSize, boulderCFrame)
+	local boulder = if rockParts and #rockParts > 0 then createTemplateBoulder(parent, rockParts, index, visualSize, boulderCFrame) else createFallbackBoulder(parent, index, visualSize, boulderCFrame)
 
 	local landingRatio = getLandingRatio(index)
 	local topY = config.position.Y + (visualSize.Y / 2)
@@ -648,12 +661,14 @@ end
 
 local function createBoulderRun(parent)
 	local template = findStageOneRockTemplate()
+	local rockParts = nil
 	if template then
+		rockParts = getTemplateRockParts(template)
 		hideRockTemplate(template)
 	end
 
 	for index, boulderConfig in ipairs(STAGE_1_BOULDERS) do
-		createBoulder(parent, index, boulderConfig, template)
+		createBoulder(parent, index, boulderConfig, rockParts)
 	end
 end
 
@@ -700,16 +715,6 @@ local function createStageTwoEntrance(parent)
 	createPart(parent, "Stage2EntranceRightHand", Vector3.new(5, 1.2, 8), Vector3.new(16, 7.4, 199), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
 		CanTouch = false,
 	})
-
-	local posterWall = createPart(parent, "MissingPersonNoobPosterWall", Vector3.new(10, 7, 0.4), Vector3.new(-10, 10.4, 205), COLORS.Dark, Enum.Material.WoodPlanks, {
-		CanTouch = false,
-	})
-
-	local poster = Instance.new("Decal")
-	poster.Name = "MissingPersonNoob"
-	poster.Face = Enum.NormalId.Front
-	poster.Texture = "rbxassetid://" .. STAGE_2_MISSING_NOOB_POSTER_ASSET_ID
-	poster.Parent = posterWall
 
 	return platform
 end
