@@ -6,6 +6,7 @@ local BuffService = require(script.Parent:WaitForChild("BuffService"))
 local DevToolsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DevToolsConfig"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
+local RcCarService = require(script.Parent:WaitForChild("RcCarService"))
 local RewardService = require(script.Parent:WaitForChild("RewardService"))
 local StageManager = require(script.Parent:WaitForChild("StageManager"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
@@ -71,6 +72,7 @@ function RunManager.new(course)
 	local rewardService = RewardService.new(runState)
 	local buffService = BuffService.new(runState)
 	local stageManager = StageManager.new(runState, rewardService, buffService, remote)
+	local rcCarService = RcCarService.new(course.stage4, runState, remote)
 
 	return setmetatable({
 		_course = course,
@@ -80,6 +82,7 @@ function RunManager.new(course)
 		_rewardService = rewardService,
 		_buffService = buffService,
 		_stageManager = stageManager,
+		_rcCarService = rcCarService,
 		_stageByNumber = indexStagesByNumber(course.worldId),
 		_bestTimes = {},
 		_spawnTokens = {},
@@ -92,6 +95,7 @@ function RunManager:start()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
+		self._rcCarService:cleanupPlayer(player)
 		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
 		self._spawnTokens[player] = nil
@@ -126,6 +130,8 @@ function RunManager:start()
 	self._devRemote.OnServerEvent:Connect(function(player, payload)
 		self:_onDevCommand(player, payload)
 	end)
+
+	self._rcCarService:start()
 end
 
 function RunManager:_setupPlayer(player)
@@ -189,6 +195,7 @@ function RunManager:_onStartTouched(hit)
 	end
 
 	local startTime = now()
+	self._rcCarService:resetPlayer(player)
 	local state = self._stageManager:startWorld(player, self._course.worldId, startTime)
 	if not state then
 		return
@@ -206,6 +213,14 @@ end
 function RunManager:_onCheckpointTouched(checkpoint, hit)
 	local player, humanoid = findPlayerFromHit(hit)
 	if not player or humanoid.Health <= 0 then
+		return
+	end
+
+	if checkpoint.requiresRcCompletion and not self._rcCarService:isStageComplete(player) then
+		self._remote:FireClient(player, {
+			type = "RcNotice",
+			message = "Finish the RC maze first",
+		})
 		return
 	end
 
@@ -304,6 +319,8 @@ function RunManager:_jumpToStageForTesting(player, stageNumber)
 		return
 	end
 
+	self._rcCarService:resetPlayer(player)
+
 	local activeBuffs = self:_getActiveBuffsBeforeStage(stageNumber)
 	local activePassiveBuffIds = {}
 	for _, buff in ipairs(activeBuffs) do
@@ -359,6 +376,7 @@ function RunManager:_jumpToStageForTesting(player, stageNumber)
 end
 
 function RunManager:_resetRunFromDevTools(player)
+	self._rcCarService:resetPlayer(player)
 	local state = self._stageManager:resetRun(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -369,6 +387,7 @@ function RunManager:_resetRunFromDevTools(player)
 end
 
 function RunManager:_returnToStartFromDevTools(player)
+	self._rcCarService:endSession(player, "Returned to start")
 	local state = self._runState:get(player)
 	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
 	self._remote:FireClient(player, {
@@ -414,6 +433,7 @@ function RunManager:_getActiveBuffsBeforeStage(stageNumber)
 end
 
 function RunManager:_onCharacterDied(player)
+	self._rcCarService:endSession(player, "Death")
 	local state = self._runState:get(player)
 	if not state.isRunActive then
 		return

@@ -27,6 +27,10 @@ DevToolsConfig.StageButtons = {
 		stageNumber = 3,
 		label = "Stage 3",
 	},
+	{
+		stageNumber = 4,
+		label = "Stage 4",
+	},
 }
 
 function DevToolsConfig.isUserIdAllowed(userId)

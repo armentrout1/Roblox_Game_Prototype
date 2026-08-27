@@ -161,8 +161,12 @@ function TimerUi.start()
 	local currentWorldName = "World 1"
 	local timerVisible = true
 
-	local function updateTimerLabel()
-		local elapsed = running and (workspace:GetServerTimeNow() - startTime) or 0
+	local function updateTimerLabel(elapsedOverride)
+		local elapsed = elapsedOverride or (running and (workspace:GetServerTimeNow() - startTime))
+		if not elapsed then
+			return
+		end
+
 		hud.timerLabel.Text = "Time " .. ObbyConfig.formatTime(elapsed)
 	end
 
@@ -294,7 +298,7 @@ function TimerUi.start()
 		elseif payload.type == "RunReset" then
 			running = false
 			startTime = 0
-			updateTimerLabel()
+			updateTimerLabel(0)
 			hud.winPanel.Visible = false
 			setBest(payload.bestTime)
 			setCoins(payload.sessionCoins)
@@ -323,13 +327,19 @@ function TimerUi.start()
 			if running then
 				flashStatus("World complete!", ObbyConfig.Colors.Finish, 1.5)
 			end
+		elseif payload.type == "RcNotice" then
+			if running then
+				flashStatus(payload.message or "RC maze", ObbyConfig.Colors.Finish, 1.5)
+			else
+				setStatus(payload.message or "RC maze", ObbyConfig.Colors.Finish)
+			end
 		elseif payload.type == "RunFinished" then
 			running = false
 			setBest(payload.bestTime)
 			setCoins(payload.sessionCoins)
 
 			local elapsedText = ObbyConfig.formatTime(payload.elapsed)
-			hud.timerLabel.Text = "Time " .. elapsedText
+			updateTimerLabel(payload.elapsed)
 			setStatus(payload.isBest and "New best!" or "Finished", payload.isBest and ObbyConfig.Colors.Finish or ObbyConfig.Colors.Start)
 			hud.winTime.Text = "Time " .. elapsedText
 			hud.winBest.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)

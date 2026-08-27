@@ -1,7 +1,9 @@
 local DevStageSelector = require(script:WaitForChild("DevStageSelector"))
+local RcCarController = require(script:WaitForChild("RcCarController"))
 local TimerUi = require(script:WaitForChild("TimerUi"))
 local WallRunController = require(script:WaitForChild("WallRunController"))
 
 TimerUi.start()
 WallRunController.start()
 DevStageSelector.start()
+RcCarController.start()

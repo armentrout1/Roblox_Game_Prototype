@@ -20,7 +20,7 @@ WorldConfig.ProgressiveBuffs = {
 	{
 		id = "stage_4_speed_boost",
 		afterStage = 4,
-		displayName = "Quick Feet",
+		displayName = "Speed Boost",
 		description = "Slightly faster movement for the rest of the run.",
 		effects = {
 			walkSpeedMultiplier = 1.08,

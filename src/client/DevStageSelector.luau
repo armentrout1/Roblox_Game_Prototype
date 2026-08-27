@@ -58,7 +58,7 @@ local function createPanel()
 	panel.BackgroundTransparency = 0.08
 	panel.BorderSizePixel = 0
 	panel.Position = UDim2.new(0, 14, 0.5, 0)
-	panel.Size = UDim2.fromOffset(146, 232)
+	panel.Size = UDim2.fromOffset(146, 276)
 	panel.Parent = screenGui
 
 	local corner = Instance.new("UICorner")

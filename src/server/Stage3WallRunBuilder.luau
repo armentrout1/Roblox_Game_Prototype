@@ -191,27 +191,11 @@ local function createCheckpoint(parent)
 	}
 end
 
-local function createStageFourPlaceholder(parent)
-	local platform = createPart(parent, "Stage4PlaceholderPlatform", Vector3.new(34, 1, 24), Vector3.new(0, 10.2, 642), COLORS.Moving, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 4", COLORS.Dark)
-
-	createPart(parent, "Stage4GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-12, 16.5, 650), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage4GateRightPost", Vector3.new(2, 12, 2), Vector3.new(12, 16.5, 650), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage4GateTop", Vector3.new(26, 2, 2), Vector3.new(0, 22.5, 650), COLORS.Dark, Enum.Material.SmoothPlastic)
-
-	local door = createPart(parent, "Stage4ComingNextDoor", Vector3.new(21, 8, 1), Vector3.new(0, 15.5, 651), COLORS.Start, Enum.Material.ForceField, {
-		Transparency = 0.2,
-	})
-	createSurfaceLabel(door, "STAGE 4\nRC CAR MAZE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
-	createSurfaceLabel(door, "STAGE 4\nRC CAR MAZE\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
-end
-
 function Stage3WallRunBuilder.build(parent)
 	createEntrance(parent)
 	createRestPlatforms(parent)
 	createWalls(parent)
 	local checkpoint = createCheckpoint(parent)
-	createStageFourPlaceholder(parent)
 
 	return {
 		checkpoint = checkpoint,

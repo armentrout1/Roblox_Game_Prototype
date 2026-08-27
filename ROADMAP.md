@@ -9,10 +9,12 @@
 - World 1 Stage 2 - Sea of Noobs is implemented: the low Sea of Noobs is hazardous, while elevated noobs are safe traversal platforms.
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
-- World 1 Stage 4 - RC Car Maze has not been started; the current course ends at a safe Stage 4 placeholder gate.
-- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, resetting a run, and returning to the start without beginning Stage 4 work.
+- World 1 Stage 4 - RC Car Maze is implemented as a distinct remote-control mini-game with server-owned completion and CP 4 progression.
+- The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
+- World 1 Stage 5 - Tsunami Run has not been started; the current course ends at a safe Stage 5 placeholder gate.
+- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, resetting a run, and returning to the start without beginning Stage 5 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course includes Stage 1, Stage 2, and Stage 3. Reaching the Stage 3 checkpoint marks Stage 3 complete and advances run state to Stage 4 metadata, but it does not finish World 1.
+- Current course includes Stage 1, Stage 2, Stage 3, and Stage 4. Reaching the Stage 4 checkpoint marks Stage 4 complete and advances run state to Stage 5 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -40,7 +42,7 @@ World 1 is a 10-stage speedrun/obby world built primarily over lava.
 1. Stage 1 - Lava Boulders: jump back and forth across boulders over lava.
 2. Stage 2 - Sea of Noobs: cross elevated safe noob platforms above a hazardous low sea of noob heads and body pieces.
 3. Stage 3 - Ninja Wall Run: achievable Roblox approximation of fast wall-running/ninja movement.
-4. Stage 4 - RC Car Maze: control an RC car through a maze, then unlock the next-stage door.
+4. Stage 4 - RC Car Maze: control an RC car through a maze, unlock the player gate, then reach CP 4.
 5. Stage 5 - Tsunami Run: outrun an incoming tsunami while reaching safe slots/areas.
 6. Stage 6 - Basketball Challenge: complete a free throw, three-pointer, and half-court shot using a shot meter/timing mechanic.
 7. Stage 7 - Cat and Mouse: mouse escapes before the cat catches them; friends can distract/interfere with the cat server-authoritatively.
@@ -82,6 +84,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: configurable passive buff framework for Stage 2/4/6/8 unlocks.
 - Complete: stage module/controller pattern documentation.
 - Complete: developer-only stage selector for Studio testing of currently implemented stages.
+- Complete: Stage 4 RC session service keeps mini-game completion server-authoritative while the client handles input, camera, and HUD presentation.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -90,13 +93,15 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 2 - Sea of Noobs, with low hazardous noob sea visuals and elevated safe noob traversal.
 - Complete: first progressive buff unlock after Stage 2.
 - Complete: Stage 3 - Ninja Wall Run.
-- Complete: developer tooling to jump directly into Stage 1, Stage 2, or Stage 3 test states without awarding skipped checkpoint coins.
+- Complete: developer tooling to jump directly into Stage 1, Stage 2, Stage 3, or Stage 4 test states without awarding skipped checkpoint coins.
+- Complete: Stage 4 - RC Car Maze.
+- Complete: Speed Boost unlock after Stage 4.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
 
 ## World 1 - Interactive Stages
 
-- Not started: Stage 4 - RC Car Maze.
-- Build Stage 4 - RC Car Maze with door unlock.
+- Complete: Stage 4 - RC Car Maze with player-specific RC completion gate.
+- Not started: Stage 5 - Tsunami Run.
 - Build Stage 5 - Tsunami Run with safe areas.
 - Build Stage 6 - Basketball Challenge with shot meter and three required shots.
 - Keep each mini-game behind a server-owned completion signal.
@@ -129,9 +134,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Begin World 1 - Interactive Stages only after Stage 1, Stage 2, and Stage 3 Studio testing:
+Continue World 1 - Interactive Stages only after Stage 1 through Stage 4 Studio testing:
 
-- Build Stage 4 - RC Car Maze.
+- Build Stage 5 - Tsunami Run.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the Stage 3 wall-run mechanic, checkpoint, coin reward, respawn orientation, and Stage 4 placeholder before adding Stage 4 content.
+- Verify the Stage 4 RC car, CP 4 reward, Speed Boost unlock, respawn orientation, and Stage 5 placeholder before adding Stage 5 content.
