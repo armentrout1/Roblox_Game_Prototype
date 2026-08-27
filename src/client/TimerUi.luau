@@ -62,12 +62,12 @@ local function createHud()
 
 	local levelPopup = Instance.new("Frame")
 	levelPopup.Name = "LevelPopup"
-	levelPopup.AnchorPoint = Vector2.new(0.5, 0)
+	levelPopup.AnchorPoint = Vector2.new(0, 0)
 	levelPopup.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
 	levelPopup.BackgroundTransparency = 0.08
 	levelPopup.BorderSizePixel = 0
-	levelPopup.Position = UDim2.new(0.5, 0, 0, 164)
-	levelPopup.Size = UDim2.fromOffset(390, 88)
+	levelPopup.Position = UDim2.fromOffset(18, 118)
+	levelPopup.Size = UDim2.fromOffset(300, 66)
 	levelPopup.Visible = false
 	levelPopup.Parent = screenGui
 
@@ -81,8 +81,8 @@ local function createHud()
 	levelStroke.Transparency = 0.15
 	levelStroke.Parent = levelPopup
 
-	local levelTitle = createText(levelPopup, "LevelTitle", "World 1", UDim2.new(1, -28, 0, 30), UDim2.fromOffset(14, 10), ObbyConfig.Colors.Finish)
-	local levelSubtitle = createText(levelPopup, "LevelSubtitle", "Stage 1: Lava Boulders", UDim2.new(1, -28, 0, 34), UDim2.fromOffset(14, 44), ObbyConfig.Colors.White)
+	local levelTitle = createText(levelPopup, "LevelTitle", "World 1", UDim2.new(1, -24, 0, 22), UDim2.fromOffset(12, 8), ObbyConfig.Colors.Finish)
+	local levelSubtitle = createText(levelPopup, "LevelSubtitle", "Stage 1: Lava Boulders", UDim2.new(1, -24, 0, 26), UDim2.fromOffset(12, 34), ObbyConfig.Colors.White)
 
 	local winPanel = Instance.new("Frame")
 	winPanel.Name = "WinPanel"

@@ -11,6 +11,8 @@ local StageManager = require(script.Parent:WaitForChild("StageManager"))
 local RunManager = {}
 RunManager.__index = RunManager
 
+local RESPAWN_ENFORCE_HEARTBEATS = 8
+
 local function now()
 	return workspace:GetServerTimeNow()
 end
@@ -29,10 +31,10 @@ local function findPlayerFromHit(hit)
 	return Players:GetPlayerFromCharacter(character), humanoid
 end
 
-local function applyCharacterTransform(character, rootPart, targetCFrame)
+local function applyCharacterTransform(rootPart, targetCFrame)
 	rootPart.AssemblyLinearVelocity = Vector3.zero
 	rootPart.AssemblyAngularVelocity = Vector3.zero
-	character:PivotTo(targetCFrame)
+	rootPart.CFrame = targetCFrame
 end
 
 function RunManager.new(course)
@@ -56,6 +58,7 @@ function RunManager.new(course)
 		_buffService = buffService,
 		_stageManager = stageManager,
 		_bestTimes = {},
+		_spawnTokens = {},
 	}, RunManager)
 end
 
@@ -67,6 +70,7 @@ function RunManager:start()
 	Players.PlayerRemoving:Connect(function(player)
 		self._runState:cleanupPlayer(player)
 		self._bestTimes[player] = nil
+		self._spawnTokens[player] = nil
 	end)
 
 	for _, player in ipairs(Players:GetPlayers()) do
@@ -130,15 +134,18 @@ function RunManager:_watchCharacter(player, character)
 		return
 	end
 
+	local spawnToken = (self._spawnTokens[player] or 0) + 1
+	self._spawnTokens[player] = spawnToken
+
 	if self._runState:isRunActive(player) then
 		self._buffService:applyCurrentBuffs(player, character)
 		task.defer(function()
-			self:_teleportCharacterForActiveRun(player, character)
+			self:_teleportCharacterForActiveRun(player, character, spawnToken)
 		end)
 	else
 		self._buffService:resetCharacter(player, character)
 		task.defer(function()
-			self:_teleportCharacterToStart(player, character)
+			self:_teleportCharacterToStart(player, character, spawnToken)
 		end)
 	end
 
@@ -246,32 +253,32 @@ function RunManager:_onCharacterDied(player)
 	})
 end
 
-function RunManager:_teleportCharacterForActiveRun(player, character)
+function RunManager:_teleportCharacterForActiveRun(player, character, spawnToken)
 	task.wait()
 
 	local state = self._runState:get(player)
-	if not state.isRunActive then
+	if not state.isRunActive or not self:_isCurrentCharacter(player, character, spawnToken) then
 		return
 	end
 
-	self:_teleportCharacter(character, self:_getRespawnCFrame(state))
+	self:_teleportCharacter(player, character, self:_getRespawnCFrame(state), spawnToken)
 	self._remote:FireClient(player, {
 		type = "RunRespawned",
 		checkpointIndex = state.latestCheckpoint or 0,
 	})
 end
 
-function RunManager:_teleportCharacterToStart(player, character)
+function RunManager:_teleportCharacterToStart(player, character, spawnToken)
 	task.wait()
 
-	if self._runState:isRunActive(player) then
+	if self._runState:isRunActive(player) or not self:_isCurrentCharacter(player, character, spawnToken) then
 		return
 	end
 
-	self:_teleportCharacter(character, self._course.startSpawnCFrame)
+	self:_teleportCharacter(player, character, self._course.startSpawnCFrame, spawnToken)
 end
 
-function RunManager:_teleportCharacter(character, targetCFrame)
+function RunManager:_teleportCharacter(player, character, targetCFrame, spawnToken)
 	if not targetCFrame then
 		return
 	end
@@ -283,21 +290,38 @@ function RunManager:_teleportCharacter(character, targetCFrame)
 	end
 
 	local originalAutoRotate = humanoid.AutoRotate
-	humanoid.AutoRotate = false
-	applyCharacterTransform(character, rootPart, targetCFrame)
+	local originalAnchored = rootPart.Anchored
 
-	RunService.Heartbeat:Wait()
-	if not character.Parent or not humanoid.Parent or not rootPart.Parent or humanoid.Health <= 0 then
-		return
+	humanoid.AutoRotate = false
+	rootPart.Anchored = true
+
+	for _ = 1, RESPAWN_ENFORCE_HEARTBEATS do
+		if not self:_isCurrentCharacter(player, character, spawnToken) or not humanoid.Parent or not rootPart.Parent or humanoid.Health <= 0 then
+			break
+		end
+
+		applyCharacterTransform(rootPart, targetCFrame)
+		RunService.Heartbeat:Wait()
 	end
 
-	-- Apply once more after Roblox's spawn placement settles so the intended facing wins deterministically.
-	applyCharacterTransform(character, rootPart, targetCFrame)
+	if self:_isCurrentCharacter(player, character, spawnToken) and humanoid.Parent and rootPart.Parent and humanoid.Health > 0 then
+		applyCharacterTransform(rootPart, targetCFrame)
+		rootPart.Anchored = originalAnchored
+	else
+		if rootPart.Parent then
+			rootPart.Anchored = originalAnchored
+		end
+	end
+
 	task.defer(function()
 		if humanoid.Parent then
 			humanoid.AutoRotate = originalAutoRotate
 		end
 	end)
+end
+
+function RunManager:_isCurrentCharacter(player, character, spawnToken)
+	return self._spawnTokens[player] == spawnToken and player.Character == character and character.Parent ~= nil
 end
 
 function RunManager:_getRespawnCFrame(state)
