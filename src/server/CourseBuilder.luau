@@ -22,6 +22,7 @@ local STAGE_2_START_POSITION = Vector3.new(0, 10.2, 195)
 local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
 local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
 local STAGE_3_FIRST_TARGET_POSITION = Vector3.new(0, 12, 382)
+local STAGE_2_MISSING_NOOB_POSTER_ASSET_ID = "10498795145"
 
 local LAVA_FIELD = {
 	size = Vector3.new(124, 0.6, 735),
@@ -699,6 +700,16 @@ local function createStageTwoEntrance(parent)
 	createPart(parent, "Stage2EntranceRightHand", Vector3.new(5, 1.2, 8), Vector3.new(16, 7.4, 199), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
 		CanTouch = false,
 	})
+
+	local posterWall = createPart(parent, "MissingPersonNoobPosterWall", Vector3.new(10, 7, 0.4), Vector3.new(-10, 10.4, 205), COLORS.Dark, Enum.Material.WoodPlanks, {
+		CanTouch = false,
+	})
+
+	local poster = Instance.new("Decal")
+	poster.Name = "MissingPersonNoob"
+	poster.Face = Enum.NormalId.Front
+	poster.Texture = "rbxassetid://" .. STAGE_2_MISSING_NOOB_POSTER_ASSET_ID
+	poster.Parent = posterWall
 
 	return platform
 end
