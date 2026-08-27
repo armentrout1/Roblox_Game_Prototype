@@ -5,7 +5,7 @@
 - Core playable obby prototype is complete.
 - Checkpoints and respawn are implemented, with Studio verification still pending.
 - Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
-- World 1 Stage 1 - Lava Boulders is implemented as the first real content pass.
+- World 1 Stage 1 - Lava Boulders is implemented as the first real content pass, with a visual polish pass that makes the boulders read as angular gray stone while preserving forgiving hidden landing pads.
 - World 1 Stage 2 - Sea of Noobs is implemented: the low Sea of Noobs is hazardous, while elevated noobs are safe traversal platforms.
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
@@ -100,7 +100,7 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## World 1 - First Content Pass
 
-- Complete: Stage 1 - Lava Boulders.
+- Complete: Stage 1 - Lava Boulders, including a faceted gray-stone boulder visual pass that keeps the original jump flow and hidden landing helpers.
 - Complete: Stage 2 - Sea of Noobs, with low hazardous noob sea visuals and elevated safe noob traversal.
 - Complete: first progressive buff unlock after Stage 2.
 - Complete: Stage 3 - Ninja Wall Run.
