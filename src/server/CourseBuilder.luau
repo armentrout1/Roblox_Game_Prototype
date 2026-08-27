@@ -7,7 +7,7 @@ local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local CourseBuilder = {}
 
 local COLORS = ObbyConfig.Colors
-local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, -1)
+local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, 1)
 local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -4)
 local PROTOTYPE_WORLD_ID = WorldConfig.CurrentWorldId
 local PROTOTYPE_STAGE_ID = WorldConfig.Worlds[PROTOTYPE_WORLD_ID].stages[1].id
