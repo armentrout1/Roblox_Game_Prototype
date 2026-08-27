@@ -8,15 +8,18 @@ local CourseBuilder = {}
 local COLORS = ObbyConfig.Colors
 local WORLD_ID = WorldConfig.CurrentWorldId
 local STAGE_1_ID = WorldConfig.Worlds[WORLD_ID].stages[1].id
+local STAGE_2_ID = WorldConfig.Worlds[WORLD_ID].stages[2].id
 local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -5)
 local START_SPAWN_LOCATION_POSITION = Vector3.new(0, 3, -5)
 local START_PAD_POSITION = Vector3.new(0, 3.05, 8)
 local STAGE_1_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 10.2, 172)
-local STAGE_2_GATE_TARGET_POSITION = Vector3.new(0, 10.2, 203)
+local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
+local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
+local STAGE_3_GATE_TARGET_POSITION = Vector3.new(0, 12, 382)
 
 local LAVA_FIELD = {
-	size = Vector3.new(92, 0.6, 205),
-	position = Vector3.new(0, 0.85, 96),
+	size = Vector3.new(112, 0.6, 430),
+	position = Vector3.new(0, 0.85, 176),
 }
 
 local STAGE_1_BOULDERS = {
@@ -46,6 +49,26 @@ local BOULDER_TUNING = {
 	earlyLandingRatio = 0.84,
 	midLandingRatio = 0.78,
 	lateLandingRatio = 0.72,
+}
+
+local NOOB_COLORS = {
+	Yellow = Color3.fromRGB(255, 220, 64),
+	Blue = Color3.fromRGB(43, 104, 255),
+	Green = Color3.fromRGB(75, 195, 72),
+	Black = Color3.fromRGB(22, 22, 24),
+}
+
+local STAGE_2_OBSTACLES = {
+	{ kind = "head", name = "GiantNoobHead01", position = Vector3.new(0, 5.8, 214), size = Vector3.new(16, 7.4, 16), landingRatio = 0.8, face = true },
+	{ kind = "limb", name = "NoobArmBridge01", position = Vector3.new(6, 9.3, 229), size = Vector3.new(20, 1, 6), color = NOOB_COLORS.Yellow, yaw = -16 },
+	{ kind = "head", name = "NoobHandHop01", position = Vector3.new(-6, 7.3, 244), size = Vector3.new(10, 3.8, 10), landingRatio = 0.86 },
+	{ kind = "torso", name = "NoobTorsoPlatform01", position = Vector3.new(2, 9.1, 258), size = Vector3.new(15, 2, 11), yaw = 8 },
+	{ kind = "head", name = "NoobHandHop02", position = Vector3.new(9, 7.6, 272), size = Vector3.new(9, 3.6, 9), landingRatio = 0.82 },
+	{ kind = "head", name = "SmallNoobHead01", position = Vector3.new(1, 7.9, 285), size = Vector3.new(8.4, 3.4, 8.4), landingRatio = 0.78 },
+	{ kind = "head", name = "SmallNoobHead02", position = Vector3.new(-8, 8.1, 298), size = Vector3.new(8, 3.4, 8), landingRatio = 0.76 },
+	{ kind = "limb", name = "NoobLegBalance01", position = Vector3.new(-2, 9.4, 313), size = Vector3.new(5, 1, 22), color = NOOB_COLORS.Green, yaw = 12 },
+	{ kind = "limb", name = "NoobArmBridge02", position = Vector3.new(8, 9.9, 328), size = Vector3.new(18, 1, 5), color = NOOB_COLORS.Yellow, yaw = -22 },
+	{ kind = "torso", name = "TiltedNoobTorso02", position = Vector3.new(-2, 10.2, 340), size = Vector3.new(13, 2, 10), yaw = -10 },
 }
 
 local function createFacingCFrame(position, lookAtPosition)
@@ -137,6 +160,75 @@ local function createPathArrow(parent, position, color)
 	})
 end
 
+local function createInvisibleLanding(parent, name, position, visualSize, landingRatio)
+	local topY = position.Y + (visualSize.Y / 2)
+	return createPart(parent, name, Vector3.new(visualSize.X * landingRatio, 0.22, visualSize.Z * landingRatio), Vector3.new(position.X, topY + 0.08, position.Z), COLORS.White, Enum.Material.SmoothPlastic, {
+		CanTouch = false,
+		Transparency = 1,
+	})
+end
+
+local function createNoobFace(parent, name, position, size)
+	local faceZ = position.Z - (size.Z / 2) - 0.08
+	local eyeY = position.Y + (size.Y * 0.18)
+	local mouthY = position.Y - (size.Y * 0.14)
+
+	for _, eyeX in ipairs({ -size.X * 0.18, size.X * 0.18 }) do
+		createPart(parent, name .. "Eye", Vector3.new(size.X * 0.09, size.Y * 0.12, 0.14), Vector3.new(position.X + eyeX, eyeY, faceZ), NOOB_COLORS.Black, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+		})
+	end
+
+	createPart(parent, name .. "Smile", Vector3.new(size.X * 0.32, size.Y * 0.08, 0.14), Vector3.new(position.X, mouthY, faceZ), NOOB_COLORS.Black, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+end
+
+local function createNoobHeadObstacle(parent, index, obstacle)
+	local head = createPart(parent, obstacle.name, obstacle.size, obstacle.position, NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+		Shape = Enum.PartType.Ball,
+	})
+
+	createInvisibleLanding(parent, obstacle.name .. "Landing", obstacle.position, obstacle.size, obstacle.landingRatio or 0.78)
+
+	if obstacle.face then
+		createNoobFace(parent, obstacle.name, obstacle.position, obstacle.size)
+	end
+
+	if index == 1 or index == 6 then
+		local topY = obstacle.position.Y + (obstacle.size.Y / 2)
+		createPathArrow(parent, Vector3.new(obstacle.position.X, topY + 0.24, obstacle.position.Z + 0.2), COLORS.Start)
+	end
+
+	return head
+end
+
+local function createNoobLimbObstacle(parent, obstacle)
+	local yaw = math.rad(obstacle.yaw or 0)
+	return createPart(parent, obstacle.name, obstacle.size, CFrame.new(obstacle.position) * CFrame.Angles(0, yaw, 0), obstacle.color or NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic)
+end
+
+local function createNoobTorsoObstacle(parent, obstacle)
+	local yaw = math.rad(obstacle.yaw or 0)
+	local torso = createPart(parent, obstacle.name, obstacle.size, CFrame.new(obstacle.position) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Blue, Enum.Material.SmoothPlastic)
+
+	local armOffset = (obstacle.size.X / 2) + 1.1
+	createPart(parent, obstacle.name .. "LeftArm", Vector3.new(1.4, 1.2, obstacle.size.Z + 1.5), CFrame.new(obstacle.position + Vector3.new(-armOffset, 0, 0)) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+	createPart(parent, obstacle.name .. "RightArm", Vector3.new(1.4, 1.2, obstacle.size.Z + 1.5), CFrame.new(obstacle.position + Vector3.new(armOffset, 0, 0)) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+
+	return torso
+end
+
 local function addHazardEffects(lava)
 	local fire = Instance.new("Fire")
 	fire.Name = "LavaGlow"
@@ -205,6 +297,8 @@ local function createLava(parent)
 		{ x = -24, z = 55, width = 7, length = 76 },
 		{ x = 26, z = 113, width = 6, length = 86 },
 		{ x = 0, z = 151, width = 8, length = 48 },
+		{ x = -30, z = 245, width = 7, length = 82 },
+		{ x = 28, z = 322, width = 8, length = 92 },
 	}) do
 		createPart(parent, string.format("LavaGlowStream%02d", index), Vector3.new(stream.width, 0.08, stream.length), Vector3.new(stream.x, 1.2, stream.z), Color3.fromRGB(255, 143, 34), Enum.Material.Neon, {
 			CanCollide = false,
@@ -213,7 +307,7 @@ local function createLava(parent)
 		})
 	end
 
-	local voidKill = createPart(parent, "FallReset", Vector3.new(120, 0.5, 240), Vector3.new(0, -6, 96), COLORS.Lava, Enum.Material.SmoothPlastic, {
+	local voidKill = createPart(parent, "FallReset", Vector3.new(140, 0.5, 470), Vector3.new(0, -6, 176), COLORS.Lava, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
 		Transparency = 1,
 	})
@@ -254,7 +348,7 @@ local function createBoulderRun(parent)
 	end
 end
 
-local function createCheckpoint(parent)
+local function createStageOneCheckpoint(parent)
 	local platform = createPart(parent, "Stage1CheckpointPlatform", Vector3.new(26, 1, 18), Vector3.new(0, 6.4, 174), COLORS.CheckpointAccent, Enum.Material.SmoothPlastic)
 
 	local base = createPart(parent, "Stage1CheckpointBase", Vector3.new(18, 0.16, 10), Vector3.new(0, 7.02, 172), COLORS.CheckpointAccent, Enum.Material.Neon, {
@@ -281,25 +375,83 @@ local function createCheckpoint(parent)
 			base = base,
 			platform = platform,
 			respawnPosition = STAGE_1_CHECKPOINT_RESPAWN_POSITION,
-			respawnLookAt = STAGE_2_GATE_TARGET_POSITION,
-			respawnCFrame = createFacingCFrame(STAGE_1_CHECKPOINT_RESPAWN_POSITION, STAGE_2_GATE_TARGET_POSITION),
+			respawnLookAt = STAGE_2_FIRST_TARGET_POSITION,
+			respawnCFrame = createFacingCFrame(STAGE_1_CHECKPOINT_RESPAWN_POSITION, STAGE_2_FIRST_TARGET_POSITION),
 		},
 	}
 end
 
-local function createStageTwoPlaceholder(parent)
-	local platform = createPart(parent, "Stage2PlaceholderPlatform", Vector3.new(30, 1, 22), Vector3.new(0, 6.4, 195), COLORS.Finish, Enum.Material.SmoothPlastic)
+local function createStageTwoEntrance(parent)
+	local platform = createPart(parent, "Stage2EntrancePlatform", Vector3.new(30, 1, 22), Vector3.new(0, 6.4, 195), NOOB_COLORS.Blue, Enum.Material.SmoothPlastic)
 	createSurfaceLabel(platform, "STAGE 2", COLORS.Dark)
 
-	createPart(parent, "Stage2GateLeftPost", Vector3.new(2, 11, 2), Vector3.new(-10, 12, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage2GateRightPost", Vector3.new(2, 11, 2), Vector3.new(10, 12, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage2GateTop", Vector3.new(22, 2, 2), Vector3.new(0, 18, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "Stage2EntranceLeftHand", Vector3.new(5, 1.2, 8), Vector3.new(-16, 7.4, 199), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanTouch = false,
+	})
+	createPart(parent, "Stage2EntranceRightHand", Vector3.new(5, 1.2, 8), Vector3.new(16, 7.4, 199), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanTouch = false,
+	})
 
-	local closedDoor = createPart(parent, "Stage2ComingNextDoor", Vector3.new(17, 8, 1), Vector3.new(0, 11, 203), COLORS.Start, Enum.Material.ForceField, {
+	return platform
+end
+
+local function createStageTwoObstacles(parent)
+	for index, obstacle in ipairs(STAGE_2_OBSTACLES) do
+		if obstacle.kind == "head" then
+			createNoobHeadObstacle(parent, index, obstacle)
+		elseif obstacle.kind == "torso" then
+			createNoobTorsoObstacle(parent, obstacle)
+		elseif obstacle.kind == "limb" then
+			createNoobLimbObstacle(parent, obstacle)
+		end
+	end
+end
+
+local function createStageTwoCheckpoint(parent)
+	local platform = createPart(parent, "Stage2CheckpointPlatform", Vector3.new(28, 1, 18), Vector3.new(0, 8.8, 352), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic)
+	createSurfaceLabel(platform, "CP 2", COLORS.Dark)
+
+	local base = createPart(parent, "Stage2CheckpointBase", Vector3.new(20, 0.16, 10), Vector3.new(0, 9.42, 352), COLORS.CheckpointAccent, Enum.Material.Neon, {
+		CanCollide = false,
+		CanTouch = false,
+		Transparency = 0.28,
+	})
+
+	local pad = createPart(parent, "Stage2Checkpoint", Vector3.new(16, 0.35, 7), Vector3.new(0, 9.62, 352), COLORS.Checkpoint, Enum.Material.Neon, {
+		CanCollide = false,
+	})
+	pad:SetAttribute("CheckpointIndex", 2)
+	pad:SetAttribute("StageId", STAGE_2_ID)
+	pad:SetAttribute("CompletesStage", true)
+
+	return {
+		id = "world_1_stage_2_checkpoint",
+		index = 2,
+		order = 2,
+		stageId = STAGE_2_ID,
+		completesStage = true,
+		part = pad,
+		base = base,
+		platform = platform,
+		respawnPosition = STAGE_2_CHECKPOINT_RESPAWN_POSITION,
+		respawnLookAt = STAGE_3_GATE_TARGET_POSITION,
+		respawnCFrame = createFacingCFrame(STAGE_2_CHECKPOINT_RESPAWN_POSITION, STAGE_3_GATE_TARGET_POSITION),
+	}
+end
+
+local function createStageThreePlaceholder(parent)
+	local platform = createPart(parent, "Stage3PlaceholderPlatform", Vector3.new(32, 1, 22), Vector3.new(0, 8.8, 378), COLORS.Beam, Enum.Material.SmoothPlastic)
+	createSurfaceLabel(platform, "STAGE 3", COLORS.Dark)
+
+	createPart(parent, "Stage3GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-11, 15, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "Stage3GateRightPost", Vector3.new(2, 12, 2), Vector3.new(11, 15, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "Stage3GateTop", Vector3.new(24, 2, 2), Vector3.new(0, 21, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
+
+	local closedDoor = createPart(parent, "Stage3ComingNextDoor", Vector3.new(19, 8, 1), Vector3.new(0, 14, 386), COLORS.Start, Enum.Material.ForceField, {
 		Transparency = 0.2,
 	})
-	createSurfaceLabel(closedDoor, "STAGE 2\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
-	createSurfaceLabel(closedDoor, "STAGE 2\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
+	createSurfaceLabel(closedDoor, "STAGE 3\nNINJA WALL RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
+	createSurfaceLabel(closedDoor, "STAGE 3\nNINJA WALL RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
 end
 
 local function createScenery(parent)
@@ -330,8 +482,11 @@ function CourseBuilder.build()
 	local hazards = createLava(courseFolder)
 	createBoulderRun(courseFolder)
 	createScenery(courseFolder)
-	local checkpoints = createCheckpoint(courseFolder)
-	createStageTwoPlaceholder(courseFolder)
+	local checkpoints = createStageOneCheckpoint(courseFolder)
+	createStageTwoEntrance(courseFolder)
+	createStageTwoObstacles(courseFolder)
+	table.insert(checkpoints, createStageTwoCheckpoint(courseFolder))
+	createStageThreePlaceholder(courseFolder)
 
 	return {
 		folder = courseFolder,

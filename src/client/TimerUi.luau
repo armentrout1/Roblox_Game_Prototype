@@ -259,7 +259,7 @@ function TimerUi.start()
 			end
 		elseif payload.type == "PassiveUnlocked" then
 			if running then
-				flashStatus(payload.displayName .. " unlocked!", ObbyConfig.Colors.CheckpointAccent, 1.5)
+				flashStatus("BUFF UNLOCKED! " .. payload.displayName, ObbyConfig.Colors.CheckpointAccent, 2)
 			end
 		elseif payload.type == "WorldCompleted" then
 			if running then

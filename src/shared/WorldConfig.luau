@@ -11,7 +11,7 @@ WorldConfig.ProgressiveBuffs = {
 	{
 		id = "stage_2_jump_boost",
 		afterStage = 2,
-		displayName = "Spring Step",
+		displayName = "Jump Boost",
 		description = "Slightly higher jumping for the rest of the run.",
 		effects = {
 			jumpPowerMultiplier = 1.08,

@@ -93,6 +93,10 @@ function StageManager:reachCheckpoint(player, checkpoint)
 		return nil
 	end
 
+	if checkpoint.stageId and checkpoint.stageId ~= state.currentStageId then
+		return nil
+	end
+
 	self._runState:setLatestCheckpoint(player, checkpointOrder, checkpointKey)
 	local reward = self._rewardService:awardCheckpoint(player, checkpointKey)
 

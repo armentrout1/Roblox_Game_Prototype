@@ -6,9 +6,11 @@
 - Checkpoints and respawn are implemented, with Studio verification still pending.
 - Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
 - World 1 Stage 1 - Lava Boulders is implemented as the first real content pass.
-- World 1 Stage 2 - Yellow Noobs has not been started; the current course ends at a safe Stage 2 placeholder gate.
+- World 1 Stage 2 - Yellow Noobs is implemented.
+- The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
+- World 1 Stage 3 - Ninja Wall Run has not been started; the current course ends at a safe Stage 3 placeholder gate.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course is Stage 1 only. Reaching the Stage 1 checkpoint marks Stage 1 complete and advances run state to Stage 2 metadata, but it does not finish World 1.
+- Current course includes Stage 1 and Stage 2. Reaching the Stage 2 checkpoint marks Stage 2 complete and advances run state to Stage 3 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -82,8 +84,9 @@ The game should evolve from a single generated prototype into reusable systems:
 ## World 1 - First Content Pass
 
 - Complete: Stage 1 - Lava Boulders.
-- Not started: Stage 2 - Yellow Noobs.
-- Build Stage 2 - Yellow Noobs.
+- Complete: Stage 2 - Yellow Noobs.
+- Complete: first progressive buff unlock after Stage 2.
+- Not started: Stage 3 - Ninja Wall Run.
 - Build Stage 3 - Ninja Wall Run.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
 
@@ -121,9 +124,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Continue World 1 - First Content Pass only after Stage 1 Studio testing:
+Continue World 1 - First Content Pass only after Stage 1 and Stage 2 Studio testing:
 
-- Build Stage 2 - Yellow Noobs.
+- Build Stage 3 - Ninja Wall Run.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the Stage 1 checkpoint, coin reward, respawn, and Stage 2 placeholder before adding Stage 2 content.
+- Verify the Stage 2 checkpoint, coin reward, first buff unlock, respawn orientation, and Stage 3 placeholder before adding Stage 3 content.
