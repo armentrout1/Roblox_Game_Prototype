@@ -248,6 +248,21 @@ function TimerUi.start()
 				local message = payload.checkpointIndex > 0 and string.format("Back to checkpoint %d", payload.checkpointIndex) or "Back to start"
 				flashStatus(message, ObbyConfig.Colors.CheckpointAccent, 1.25)
 			end
+		elseif payload.type == "RunReset" then
+			running = false
+			startTime = 0
+			hud.timerLabel.Text = "Time 0.00s"
+			hud.winPanel.Visible = false
+			setBest(payload.bestTime)
+			setCoins(payload.sessionCoins)
+			setStatus("Touch GO to start", ObbyConfig.Colors.Start)
+		elseif payload.type == "DevTeleported" then
+			setCoins(payload.sessionCoins)
+			if running then
+				flashStatus(payload.message or "Teleported", ObbyConfig.Colors.CheckpointAccent, 1.25)
+			else
+				setStatus(payload.message or "Teleported", ObbyConfig.Colors.CheckpointAccent)
+			end
 		elseif payload.type == "StageCompleted" then
 			if running then
 				flashStatus(string.format("Stage %d complete!", payload.stageNumber), ObbyConfig.Colors.Finish, 1.25)

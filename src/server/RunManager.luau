@@ -3,10 +3,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local BuffService = require(script.Parent:WaitForChild("BuffService"))
+local DevToolsConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DevToolsConfig"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local PlayerRunState = require(script.Parent:WaitForChild("PlayerRunState"))
 local RewardService = require(script.Parent:WaitForChild("RewardService"))
 local StageManager = require(script.Parent:WaitForChild("StageManager"))
+local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local RunManager = {}
 RunManager.__index = RunManager
@@ -37,14 +39,34 @@ local function applyCharacterTransform(rootPart, targetCFrame)
 	rootPart.CFrame = targetCFrame
 end
 
-function RunManager.new(course)
-	local remote = ReplicatedStorage:FindFirstChild(ObbyConfig.RemoteEventName)
+local function getOrCreateRemoteEvent(name)
+	local remote = ReplicatedStorage:FindFirstChild(name)
 	if not remote then
 		remote = Instance.new("RemoteEvent")
-		remote.Name = ObbyConfig.RemoteEventName
+		remote.Name = name
 		remote.Parent = ReplicatedStorage
 	end
 
+	return remote
+end
+
+local function indexStagesByNumber(worldId)
+	local stageByNumber = {}
+	local world = WorldConfig.Worlds[worldId]
+	if not world then
+		return stageByNumber
+	end
+
+	for _, stage in ipairs(world.stages) do
+		stageByNumber[stage.number] = stage
+	end
+
+	return stageByNumber
+end
+
+function RunManager.new(course)
+	local remote = getOrCreateRemoteEvent(ObbyConfig.RemoteEventName)
+	local devRemote = getOrCreateRemoteEvent(DevToolsConfig.RemoteEventName)
 	local runState = PlayerRunState.new()
 	local rewardService = RewardService.new(runState)
 	local buffService = BuffService.new(runState)
@@ -53,10 +75,12 @@ function RunManager.new(course)
 	return setmetatable({
 		_course = course,
 		_remote = remote,
+		_devRemote = devRemote,
 		_runState = runState,
 		_rewardService = rewardService,
 		_buffService = buffService,
 		_stageManager = stageManager,
+		_stageByNumber = indexStagesByNumber(course.worldId),
 		_bestTimes = {},
 		_spawnTokens = {},
 	}, RunManager)
@@ -98,6 +122,10 @@ function RunManager:start()
 			self:_onHazardTouched(hit)
 		end)
 	end
+
+	self._devRemote.OnServerEvent:Connect(function(player, payload)
+		self:_onDevCommand(player, payload)
+	end)
 end
 
 function RunManager:_setupPlayer(player)
@@ -241,6 +269,150 @@ function RunManager:_onHazardTouched(hit)
 	humanoid.Health = 0
 end
 
+function RunManager:_onDevCommand(player, payload)
+	if not self:_isDevControlsAllowed(player) or typeof(payload) ~= "table" then
+		return
+	end
+
+	local action = payload.action
+	if action == DevToolsConfig.Actions.JumpToStage then
+		self:_jumpToStageForTesting(player, tonumber(payload.stageNumber))
+	elseif action == DevToolsConfig.Actions.ResetRun then
+		self:_resetRunFromDevTools(player)
+	elseif action == DevToolsConfig.Actions.ReturnToStart then
+		self:_returnToStartFromDevTools(player)
+	end
+end
+
+function RunManager:_isDevControlsAllowed(player)
+	if DevToolsConfig.EnabledInStudio and RunService:IsStudio() then
+		return true
+	end
+
+	return DevToolsConfig.isUserIdAllowed(player.UserId)
+end
+
+function RunManager:_jumpToStageForTesting(player, stageNumber)
+	if not stageNumber or stageNumber ~= math.floor(stageNumber) then
+		return
+	end
+
+	local stageStart = self._course.stageStarts and self._course.stageStarts[stageNumber]
+	local stage = self._stageByNumber[stageNumber]
+	local world = WorldConfig.Worlds[self._course.worldId]
+	if not stageStart or not stage or not world then
+		return
+	end
+
+	local activeBuffs = self:_getActiveBuffsBeforeStage(stageNumber)
+	local activePassiveBuffIds = {}
+	for _, buff in ipairs(activeBuffs) do
+		table.insert(activePassiveBuffIds, buff.id)
+	end
+
+	local state = self._runState:configureTestRun(player, {
+		worldId = self._course.worldId,
+		stageId = stage.id,
+		startTime = now(),
+		latestCheckpoint = stageStart.latestCheckpoint,
+		latestCheckpointId = stageStart.latestCheckpointId,
+		completedStageIds = self:_getCompletedStageIdsBefore(stageNumber),
+		rewardedCheckpointIds = self:_getCheckpointRewardIdsThrough(stageStart.latestCheckpoint or 0),
+		activePassiveBuffIds = activePassiveBuffIds,
+	})
+
+	if player.Character then
+		self._buffService:applyCurrentBuffs(player, player.Character)
+	end
+
+	self._remote:FireClient(player, {
+		type = "WorldStarted",
+		worldId = world.id,
+		worldName = world.displayName,
+		stageId = stage.id,
+		stageNumber = stage.number,
+		stageName = stage.name,
+	})
+	self._remote:FireClient(player, {
+		type = "RunStarted",
+		startTime = state.runStartTime,
+		bestTime = self._bestTimes[player] or 0,
+		sessionCoins = state.sessionCoins,
+		coinsEarnedThisRun = state.coinsEarnedThisRun,
+	})
+	self._remote:FireClient(player, {
+		type = "DevTeleported",
+		message = string.format("Testing Stage %d", stageNumber),
+		sessionCoins = state.sessionCoins,
+	})
+
+	for _, buff in ipairs(activeBuffs) do
+		self._remote:FireClient(player, {
+			type = "PassiveUnlocked",
+			buffId = buff.id,
+			displayName = buff.displayName,
+			description = buff.description,
+		})
+	end
+
+	self:_teleportCurrentCharacter(player, stageStart.cframe)
+end
+
+function RunManager:_resetRunFromDevTools(player)
+	local state = self._stageManager:resetRun(player)
+	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
+	self._remote:FireClient(player, {
+		type = "RunReset",
+		bestTime = self._bestTimes[player] or 0,
+		sessionCoins = state.sessionCoins,
+	})
+end
+
+function RunManager:_returnToStartFromDevTools(player)
+	local state = self._runState:get(player)
+	self:_teleportCurrentCharacter(player, self._course.startSpawnCFrame)
+	self._remote:FireClient(player, {
+		type = "DevTeleported",
+		message = "Returned to start",
+		sessionCoins = state.sessionCoins,
+	})
+end
+
+function RunManager:_getCompletedStageIdsBefore(stageNumber)
+	local completedStageIds = {}
+	for previousStageNumber = 1, stageNumber - 1 do
+		local stage = self._stageByNumber[previousStageNumber]
+		if stage then
+			table.insert(completedStageIds, stage.id)
+		end
+	end
+
+	return completedStageIds
+end
+
+function RunManager:_getCheckpointRewardIdsThrough(maxCheckpointIndex)
+	local checkpointIds = {}
+	for _, checkpoint in ipairs(self._course.checkpoints) do
+		if checkpoint.index and checkpoint.index <= maxCheckpointIndex then
+			table.insert(checkpointIds, checkpoint.id or string.format("%s_checkpoint_%d", checkpoint.stageId or "run", checkpoint.index))
+		end
+	end
+
+	return checkpointIds
+end
+
+function RunManager:_getActiveBuffsBeforeStage(stageNumber)
+	local activeBuffs = {}
+	for previousStageNumber = 1, stageNumber - 1 do
+		local buff = self._buffService:getBuffForCompletedStage(previousStageNumber)
+		if buff then
+			table.insert(activeBuffs, buff)
+		end
+	end
+
+	return activeBuffs
+end
+
 function RunManager:_onCharacterDied(player)
 	local state = self._runState:get(player)
 	if not state.isRunActive then
@@ -334,6 +506,33 @@ function RunManager:_getRespawnCFrame(state)
 	end
 
 	return self._course.startRespawnCFrame
+end
+
+function RunManager:_teleportCurrentCharacter(player, targetCFrame)
+	if not targetCFrame then
+		return false
+	end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not character or not humanoid or humanoid.Health <= 0 then
+		task.spawn(function()
+			player:LoadCharacter()
+			local newCharacter = player.Character or player.CharacterAdded:Wait()
+			task.wait()
+			local newHumanoid = newCharacter and newCharacter:FindFirstChildOfClass("Humanoid")
+			if newHumanoid and newHumanoid.Health > 0 then
+				self:_teleportCurrentCharacter(player, targetCFrame)
+			end
+		end)
+
+		return false
+	end
+
+	local spawnToken = (self._spawnTokens[player] or 0) + 1
+	self._spawnTokens[player] = spawnToken
+	self:_teleportCharacter(player, character, targetCFrame, spawnToken)
+	return true
 end
 
 function RunManager:_setLeaderstatBest(player, elapsed)

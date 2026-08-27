@@ -45,6 +45,10 @@ function BuffService:applyCurrentBuffs(player, character)
 	self:_applyStats(character, walkMultiplier, jumpMultiplier)
 end
 
+function BuffService:getBuffForCompletedStage(stageNumber)
+	return self._buffByStage[stageNumber]
+end
+
 function BuffService:unlockForCompletedStage(player, stageNumber)
 	local buff = self._buffByStage[stageNumber]
 	if not buff then

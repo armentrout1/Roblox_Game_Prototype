@@ -69,6 +69,36 @@ function PlayerRunState:startRun(player, worldId, stageId, startTime)
 	return state
 end
 
+function PlayerRunState:configureTestRun(player, options)
+	local state = self:get(player)
+	state.isRunActive = true
+	state.currentWorldId = options.worldId
+	state.currentStageId = options.stageId
+	state.latestCheckpoint = options.latestCheckpoint or 0
+	state.latestCheckpointId = options.latestCheckpointId
+	state.checkpointsRewardedThisRun = {}
+	state.stagesCompletedThisRun = {}
+	state.worldCompletionRewarded = false
+	state.runStartTime = options.startTime or 0
+	state.coinsEarnedThisRun = 0
+	state.activePassiveBuffs = {}
+	state.remainingLives = state.bonusLives or DEFAULT_BONUS_LIVES
+
+	for _, checkpointId in ipairs(options.rewardedCheckpointIds or {}) do
+		state.checkpointsRewardedThisRun[checkpointId] = true
+	end
+
+	for _, stageId in ipairs(options.completedStageIds or {}) do
+		state.stagesCompletedThisRun[stageId] = true
+	end
+
+	for _, buffId in ipairs(options.activePassiveBuffIds or {}) do
+		state.activePassiveBuffs[buffId] = true
+	end
+
+	return state
+end
+
 function PlayerRunState:finishRun(player)
 	local state = self:get(player)
 	state.isRunActive = false

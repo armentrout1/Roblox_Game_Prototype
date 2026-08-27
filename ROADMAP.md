@@ -10,6 +10,7 @@
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
 - World 1 Stage 4 - RC Car Maze has not been started; the current course ends at a safe Stage 4 placeholder gate.
+- Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, resetting a run, and returning to the start without beginning Stage 4 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
 - Current course includes Stage 1, Stage 2, and Stage 3. Reaching the Stage 3 checkpoint marks Stage 3 complete and advances run state to Stage 4 metadata, but it does not finish World 1.
 
@@ -80,6 +81,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: world completion reward API for future Stage 10 completion.
 - Complete: configurable passive buff framework for Stage 2/4/6/8 unlocks.
 - Complete: stage module/controller pattern documentation.
+- Complete: developer-only stage selector for Studio testing of currently implemented stages.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -88,6 +90,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 2 - Yellow Noobs.
 - Complete: first progressive buff unlock after Stage 2.
 - Complete: Stage 3 - Ninja Wall Run.
+- Complete: developer tooling to jump directly into Stage 1, Stage 2, or Stage 3 test states without awarding skipped checkpoint coins.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
 
 ## World 1 - Interactive Stages

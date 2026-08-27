@@ -14,6 +14,7 @@ local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -5)
 local START_SPAWN_LOCATION_POSITION = Vector3.new(0, 3, -5)
 local START_PAD_POSITION = Vector3.new(0, 3.05, 8)
 local STAGE_1_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 10.2, 172)
+local STAGE_2_START_POSITION = Vector3.new(0, 10.2, 195)
 local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
 local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
 local STAGE_3_FIRST_TARGET_POSITION = Vector3.new(0, 12, 382)
@@ -474,7 +475,33 @@ function CourseBuilder.build()
 	createStageTwoEntrance(courseFolder)
 	createStageTwoObstacles(courseFolder)
 	table.insert(checkpoints, createStageTwoCheckpoint(courseFolder))
-	table.insert(checkpoints, Stage3WallRunBuilder.build(courseFolder))
+	local stage3Data = Stage3WallRunBuilder.build(courseFolder)
+	table.insert(checkpoints, stage3Data.checkpoint)
+
+	local startCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION)
+	local stageStarts = {
+		[1] = {
+			stageNumber = 1,
+			stageId = STAGE_1_ID,
+			cframe = startCFrame,
+			latestCheckpoint = 0,
+			latestCheckpointId = nil,
+		},
+		[2] = {
+			stageNumber = 2,
+			stageId = STAGE_2_ID,
+			cframe = createFacingCFrame(STAGE_2_START_POSITION, STAGE_2_FIRST_TARGET_POSITION),
+			latestCheckpoint = checkpoints[1].index,
+			latestCheckpointId = checkpoints[1].id,
+		},
+		[3] = {
+			stageNumber = 3,
+			stageId = stage3Data.stageStart.stageId,
+			cframe = stage3Data.stageStart.cframe,
+			latestCheckpoint = checkpoints[2].index,
+			latestCheckpointId = checkpoints[2].id,
+		},
+	}
 
 	return {
 		folder = courseFolder,
@@ -482,10 +509,11 @@ function CourseBuilder.build()
 		startStageId = STAGE_1_ID,
 		finishStageId = nil,
 		startPad = startPad,
-		startSpawnCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION),
-		startRespawnCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION),
+		startSpawnCFrame = startCFrame,
+		startRespawnCFrame = startCFrame,
 		finishPad = nil,
 		checkpoints = checkpoints,
+		stageStarts = stageStarts,
 		hazards = hazards,
 	}
 end

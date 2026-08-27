@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
+local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local WallRunConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WallRunConfig"))
 
 local WallRunController = {}
@@ -278,6 +279,16 @@ function WallRunController.start()
 
 	UserInputService.JumpRequest:Connect(function()
 		jumpAwayFromWall()
+	end)
+
+	ReplicatedStorage:WaitForChild(ObbyConfig.RemoteEventName).OnClientEvent:Connect(function(payload)
+		if typeof(payload) ~= "table" then
+			return
+		end
+
+		if payload.type == "DevTeleported" or payload.type == "RunReset" or payload.type == "RunRespawned" or payload.type == "RunFinished" then
+			stopWallRun()
+		end
 	end)
 
 	RunService.Heartbeat:Connect(function()

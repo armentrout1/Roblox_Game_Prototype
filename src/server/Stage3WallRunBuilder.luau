@@ -10,6 +10,8 @@ local COLORS = ObbyConfig.Colors
 local WORLD_ID = WorldConfig.CurrentWorldId
 local STAGE_3_ID = WorldConfig.Worlds[WORLD_ID].stages[3].id
 
+local STAGE_3_START_POSITION = Vector3.new(0, 12, 378)
+local STAGE_3_START_LOOK_AT_POSITION = Vector3.new(0, 12, 408)
 local STAGE_3_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 13.4, 614)
 local STAGE_4_GATE_TARGET_POSITION = Vector3.new(0, 13.4, 644)
 
@@ -211,7 +213,14 @@ function Stage3WallRunBuilder.build(parent)
 	local checkpoint = createCheckpoint(parent)
 	createStageFourPlaceholder(parent)
 
-	return checkpoint
+	return {
+		checkpoint = checkpoint,
+		stageStart = {
+			stageNumber = 3,
+			stageId = STAGE_3_ID,
+			cframe = createFacingCFrame(STAGE_3_START_POSITION, STAGE_3_START_LOOK_AT_POSITION),
+		},
+	}
 end
 
 return Stage3WallRunBuilder
