@@ -1,5 +1,4 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
@@ -7,21 +6,53 @@ local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local CourseBuilder = {}
 
 local COLORS = ObbyConfig.Colors
+local WORLD_ID = WorldConfig.CurrentWorldId
+local STAGE_1_ID = WorldConfig.Worlds[WORLD_ID].stages[1].id
 local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, 1)
-local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -4)
-local PROTOTYPE_WORLD_ID = WorldConfig.CurrentWorldId
-local PROTOTYPE_STAGE_ID = WorldConfig.Worlds[PROTOTYPE_WORLD_ID].stages[1].id
+local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -5)
+
+local LAVA_FIELD = {
+	size = Vector3.new(92, 0.6, 205),
+	position = Vector3.new(0, 0.85, 96),
+}
+
+local STAGE_1_BOULDERS = {
+	{ position = Vector3.new(-2, 2.65, 24), size = Vector3.new(11, 1.7, 9), rotation = Vector3.new(0, 11, -4) },
+	{ position = Vector3.new(5, 3.0, 37), size = Vector3.new(10, 1.9, 8), rotation = Vector3.new(2, -13, 6) },
+	{ position = Vector3.new(-5, 3.2, 50), size = Vector3.new(9.5, 2, 8.2), rotation = Vector3.new(-3, 18, -5) },
+	{ position = Vector3.new(6, 3.4, 63), size = Vector3.new(9, 2, 7.8), rotation = Vector3.new(4, -17, 3) },
+	{ position = Vector3.new(-6, 3.8, 76), size = Vector3.new(8.6, 2.2, 7.4), rotation = Vector3.new(-2, 25, 7) },
+	{ position = Vector3.new(5, 4.0, 89), size = Vector3.new(8.2, 2.2, 7), rotation = Vector3.new(3, -23, -4) },
+	{ position = Vector3.new(-3, 4.3, 101), size = Vector3.new(8, 2.3, 6.8), rotation = Vector3.new(-5, 14, 5) },
+	{ position = Vector3.new(7, 4.5, 113), size = Vector3.new(7.6, 2.3, 6.4), rotation = Vector3.new(5, -30, -6) },
+	{ position = Vector3.new(-7, 4.8, 125), size = Vector3.new(7.4, 2.4, 6.2), rotation = Vector3.new(-3, 27, 4) },
+	{ position = Vector3.new(4, 5.0, 137), size = Vector3.new(7.2, 2.4, 6), rotation = Vector3.new(4, -18, -7) },
+	{ position = Vector3.new(-4, 5.2, 149), size = Vector3.new(6.8, 2.4, 5.8), rotation = Vector3.new(-4, 34, 5) },
+	{ position = Vector3.new(3, 5.5, 160), size = Vector3.new(7, 2.4, 5.8), rotation = Vector3.new(6, -22, -4) },
+}
+
+local BOULDER_COLORS = {
+	Color3.fromRGB(54, 49, 48),
+	Color3.fromRGB(71, 63, 58),
+	Color3.fromRGB(46, 45, 48),
+}
 
 local function createPlayerFacingCFrame(position)
 	return CFrame.lookAt(position, position + PLAYER_SPAWN_LOOK_DIRECTION)
 end
 
-local function createPart(parent, name, size, position, color, material, properties)
+local function createPart(parent, name, size, positionOrCFrame, color, material, properties)
 	local part = Instance.new("Part")
 	part.Name = name
 	part.Anchored = true
 	part.Size = size
-	part.Position = position
+
+	if typeof(positionOrCFrame) == "CFrame" then
+		part.CFrame = positionOrCFrame
+	else
+		part.Position = positionOrCFrame
+	end
+
 	part.Color = color
 	part.Material = material or Enum.Material.SmoothPlastic
 	part.TopSurface = Enum.SurfaceType.Smooth
@@ -35,11 +66,11 @@ local function createPart(parent, name, size, position, color, material, propert
 	return part
 end
 
-local function createLabel(parent, text, offsetY)
+local function createLabel(parent, text, offsetY, size)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Label"
 	billboard.AlwaysOnTop = true
-	billboard.Size = UDim2.fromOffset(220, 64)
+	billboard.Size = size or UDim2.fromOffset(220, 64)
 	billboard.StudsOffsetWorldSpace = Vector3.new(0, offsetY or 4, 0)
 	billboard.Parent = parent
 
@@ -52,12 +83,13 @@ local function createLabel(parent, text, offsetY)
 	label.TextScaled = true
 	label.TextStrokeColor3 = COLORS.Dark
 	label.TextStrokeTransparency = 0.2
+	label.TextWrapped = true
 	label.Parent = billboard
 
 	return billboard
 end
 
-local function createSurfaceLabel(parent, text)
+local function createSurfaceLabel(parent, text, textColor)
 	local surfaceGui = Instance.new("SurfaceGui")
 	surfaceGui.Name = "SurfaceLabel"
 	surfaceGui.Face = Enum.NormalId.Top
@@ -71,18 +103,24 @@ local function createSurfaceLabel(parent, text)
 	label.Font = Enum.Font.GothamBold
 	label.Size = UDim2.fromScale(1, 1)
 	label.Text = text
-	label.TextColor3 = COLORS.Dark
+	label.TextColor3 = textColor or COLORS.Dark
 	label.TextScaled = true
+	label.TextWrapped = true
 	label.Parent = surfaceGui
 end
 
-local function createArrow(parent, position, color)
-	createPart(parent, "ArrowStem", Vector3.new(1.2, 0.14, 4.5), position, color, Enum.Material.Neon, {
+local function createPathArrow(parent, position, color)
+	createPart(parent, "ArrowStem", Vector3.new(1, 0.14, 4.8), position, color, Enum.Material.Neon, {
 		CanCollide = false,
 		CanTouch = false,
 	})
 
-	createPart(parent, "ArrowHead", Vector3.new(4.4, 0.14, 1.2), position + Vector3.new(0, 0, 2.5), color, Enum.Material.Neon, {
+	createPart(parent, "ArrowLeftWing", Vector3.new(0.8, 0.14, 3.1), CFrame.new(position + Vector3.new(-1, 0, 2.2)) * CFrame.Angles(0, math.rad(-35), 0), color, Enum.Material.Neon, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+
+	createPart(parent, "ArrowRightWing", Vector3.new(0.8, 0.14, 3.1), CFrame.new(position + Vector3.new(1, 0, 2.2)) * CFrame.Angles(0, math.rad(35), 0), color, Enum.Material.Neon, {
 		CanCollide = false,
 		CanTouch = false,
 	})
@@ -94,22 +132,33 @@ local function addHazardEffects(lava)
 	fire.Color = COLORS.Lava
 	fire.SecondaryColor = Color3.fromRGB(255, 174, 59)
 	fire.Heat = 4
-	fire.Size = 8
+	fire.Size = 9
 	fire.Parent = lava
+
+	local smoke = Instance.new("Smoke")
+	smoke.Name = "LavaSmoke"
+	smoke.Color = Color3.fromRGB(70, 57, 54)
+	smoke.Opacity = 0.13
+	smoke.RiseVelocity = 3
+	smoke.Size = 12
+	smoke.Parent = lava
 
 	local light = Instance.new("PointLight")
 	light.Name = "LavaLight"
-	light.Brightness = 1.8
+	light.Brightness = 2
 	light.Color = COLORS.Lava
-	light.Range = 22
+	light.Range = 28
 	light.Parent = lava
 end
 
-local function createSpawn(parent)
-	local platform = createPart(parent, "StartPlatform", Vector3.new(22, 1, 18), Vector3.new(0, 2, 0), COLORS.Spawn, Enum.Material.Grass)
-	createLabel(platform, "START", 5)
+local function createStartArea(parent)
+	local platform = createPart(parent, "World1Stage1StartPlatform", Vector3.new(30, 1, 22), Vector3.new(0, 2, 0), COLORS.Spawn, Enum.Material.Grass)
+	createLabel(platform, "WORLD 1\nSTAGE 1\nLAVA BOULDERS", 8, UDim2.fromOffset(320, 100))
 	createSurfaceLabel(platform, "START")
-	createArrow(parent, Vector3.new(0, 2.6, 3), COLORS.Start)
+
+	createPart(parent, "StartLeftRail", Vector3.new(1, 1.5, 20), Vector3.new(-14.5, 3, 0), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "StartRightRail", Vector3.new(1, 1.5, 20), Vector3.new(14.5, 3, 0), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPathArrow(parent, Vector3.new(0, 2.65, 4), COLORS.Start)
 
 	local spawnLocation = Instance.new("SpawnLocation")
 	spawnLocation.Name = "PlayerSpawn"
@@ -118,91 +167,44 @@ local function createSpawn(parent)
 	spawnLocation.Duration = 0
 	spawnLocation.Neutral = true
 	spawnLocation.Size = Vector3.new(8, 1, 8)
-	spawnLocation.Position = Vector3.new(0, 3, -4)
+	spawnLocation.CFrame = createPlayerFacingCFrame(Vector3.new(0, 3, -5))
 	spawnLocation.Color = COLORS.Spawn
 	spawnLocation.Material = Enum.Material.ForceField
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
 	spawnLocation.BottomSurface = Enum.SurfaceType.Smooth
 	spawnLocation.Parent = parent
 
-	local startPad = createPart(parent, "StartPad", Vector3.new(18, 0.3, 2), Vector3.new(0, 3.05, 8), COLORS.Start, Enum.Material.Neon, {
+	local startPad = createPart(parent, "StartPad", Vector3.new(18, 0.3, 2.5), Vector3.new(0, 3.05, 8), COLORS.Start, Enum.Material.Neon, {
 		CanCollide = false,
 	})
 	createLabel(startPad, "GO!", 4)
 
-	return platform, startPad
+	return startPad
 end
 
-local function createFinish(parent)
-	local platform = createPart(parent, "FinishPlatform", Vector3.new(22, 1, 18), Vector3.new(0, 5.5, 174), COLORS.Finish, Enum.Material.SmoothPlastic)
-	createLabel(platform, "FINISH", 5)
-	createSurfaceLabel(platform, "FINISH")
-
-	local finishPad = createPart(parent, "FinishPad", Vector3.new(16, 0.35, 9), Vector3.new(0, 6.15, 174), COLORS.Finish, Enum.Material.Neon, {
-		CanCollide = false,
-	})
-
-	return platform, finishPad
-end
-
-local function createCheckpoint(parent, index, size, position)
-	local base = createPart(parent, string.format("Checkpoint%02dBase", index), size + Vector3.new(1.8, -0.22, 1.8), position - Vector3.new(0, 0.16, 0), COLORS.CheckpointAccent, Enum.Material.Neon, {
-		CanCollide = false,
-		CanTouch = false,
-		Transparency = 0.34,
-	})
-
-	local pad = createPart(parent, string.format("Checkpoint%02d", index), size, position, COLORS.Checkpoint, Enum.Material.Neon, {
-		CanCollide = false,
-	})
-	pad:SetAttribute("CheckpointIndex", index)
-
-	createLabel(pad, string.format("CHECKPOINT %d", index), 4.5)
-	createSurfaceLabel(pad, "CHECKPOINT")
-
-	return {
-		id = string.format("prototype_checkpoint_%d", index),
-		index = index,
-		order = index,
-		stageId = PROTOTYPE_STAGE_ID,
-		part = pad,
-		base = base,
-		respawnCFrame = createPlayerFacingCFrame(position + Vector3.new(0, 5, 0)),
-	}
-end
-
-local function createCheckpoints(parent)
-	return {
-		createCheckpoint(parent, 1, Vector3.new(7, 0.35, 5), Vector3.new(0, 5.75, 48)),
-		createCheckpoint(parent, 2, Vector3.new(10, 0.35, 5), Vector3.new(0, 5.75, 119)),
-		createCheckpoint(parent, 3, Vector3.new(10, 0.35, 5), Vector3.new(0, 5.75, 145)),
-	}
-end
-
-local function createMovingPlatform(parent)
-	local platform = createPart(parent, "MovingPlatform", Vector3.new(9, 1, 8), Vector3.new(-9, 5.2, 132), COLORS.Moving, Enum.Material.Neon)
-	createLabel(platform, "MOVING PLATFORM", 5)
-
-	local tweenInfo = TweenInfo.new(2.4, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
-	local tween = TweenService:Create(platform, tweenInfo, {
-		Position = Vector3.new(9, 5.2, 132),
-	})
-	tween:Play()
-
-	return platform
-end
-
-local function createHazards(parent)
+local function createLava(parent)
 	local hazards = {}
 
-	local lava = createPart(parent, "LavaPit", Vector3.new(30, 0.5, 24), Vector3.new(0, 2.3, 96), COLORS.Lava, Enum.Material.Neon, {
+	local lava = createPart(parent, "World1LavaField", LAVA_FIELD.size, LAVA_FIELD.position, COLORS.Lava, Enum.Material.Neon, {
 		CanCollide = false,
 	})
-	createLabel(lava, "LAVA", 6)
+	createLabel(lava, "LAVA", 7, UDim2.fromOffset(170, 50))
 	addHazardEffects(lava)
 	table.insert(hazards, lava)
 
-	local voidKill = createPart(parent, "FallReset", Vector3.new(80, 0.4, 220), Vector3.new(0, 0.2, 88), COLORS.Lava, Enum.Material.SmoothPlastic, {
+	for index, stream in ipairs({
+		{ x = -24, z = 55, width = 7, length = 76 },
+		{ x = 26, z = 113, width = 6, length = 86 },
+		{ x = 0, z = 151, width = 8, length = 48 },
+	}) do
+		createPart(parent, string.format("LavaGlowStream%02d", index), Vector3.new(stream.width, 0.08, stream.length), Vector3.new(stream.x, 1.2, stream.z), Color3.fromRGB(255, 143, 34), Enum.Material.Neon, {
+			CanCollide = false,
+			CanTouch = false,
+			Transparency = 0.25,
+		})
+	end
+
+	local voidKill = createPart(parent, "FallReset", Vector3.new(120, 0.5, 240), Vector3.new(0, -6, 96), COLORS.Lava, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
 		Transparency = 1,
 	})
@@ -211,28 +213,96 @@ local function createHazards(parent)
 	return hazards
 end
 
-local function createStaticCourse(parent)
-	local platforms = {
-		{ "JumpPad01", Vector3.new(11, 1, 8), Vector3.new(0, 3, 22), COLORS.PathA },
-		{ "JumpPad02", Vector3.new(9, 1, 7), Vector3.new(0, 4, 35), COLORS.PathB },
-		{ "JumpPad03", Vector3.new(8, 1, 7), Vector3.new(0, 5, 48), COLORS.PathC },
-		{ "LeftZig", Vector3.new(8, 1, 8), Vector3.new(-8, 5, 61), COLORS.PathA },
-		{ "RightZig", Vector3.new(8, 1, 8), Vector3.new(8, 5, 74), COLORS.PathB },
-		{ "LavaLaunch", Vector3.new(12, 1, 8), Vector3.new(0, 5, 86), COLORS.PathC },
-		{ "Stone01", Vector3.new(5, 1, 5), Vector3.new(-7, 5.2, 95), COLORS.PathA },
-		{ "Stone02", Vector3.new(5, 1, 5), Vector3.new(0, 5.5, 102), COLORS.PathB },
-		{ "Stone03", Vector3.new(5, 1, 5), Vector3.new(7, 5.2, 109), COLORS.PathC },
-		{ "PostLava", Vector3.new(12, 1, 8), Vector3.new(0, 5, 119), COLORS.PathA },
-		{ "MovingLanding", Vector3.new(12, 1, 8), Vector3.new(0, 5, 145), COLORS.PathB },
-		{ "BalanceBeam", Vector3.new(4, 1, 18), Vector3.new(0, 5.3, 158), COLORS.Beam },
+local function createBoulder(parent, index, config)
+	local rotation = config.rotation or Vector3.zero
+	local boulderCFrame = CFrame.new(config.position) * CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
+
+	local boulder = createPart(parent, string.format("Stage1Boulder%02d", index), config.size, boulderCFrame, BOULDER_COLORS[((index - 1) % #BOULDER_COLORS) + 1], Enum.Material.Slate, {
+		CanCollide = false,
+		CanTouch = false,
+		Shape = Enum.PartType.Ball,
+	})
+
+	local topY = config.position.Y + (config.size.Y / 2)
+	-- Invisible flat landings keep the volcanic rocks playful instead of slippery.
+	createPart(parent, string.format("Stage1Boulder%02dLanding", index), Vector3.new(config.size.X * 0.64, 0.2, config.size.Z * 0.64), Vector3.new(config.position.X, topY + 0.08, config.position.Z), COLORS.White, Enum.Material.SmoothPlastic, {
+		CanTouch = false,
+		Transparency = 1,
+	})
+
+	if index == 1 or index == 5 or index == 9 then
+		createPathArrow(parent, Vector3.new(config.position.X, topY + 0.24, config.position.Z + 0.2), COLORS.Start)
+	end
+
+	return boulder
+end
+
+local function createBoulderRun(parent)
+	for index, boulderConfig in ipairs(STAGE_1_BOULDERS) do
+		createBoulder(parent, index, boulderConfig)
+	end
+end
+
+local function createCheckpoint(parent)
+	local platform = createPart(parent, "Stage1CheckpointPlatform", Vector3.new(26, 1, 18), Vector3.new(0, 6.4, 174), COLORS.CheckpointAccent, Enum.Material.SmoothPlastic)
+	createSurfaceLabel(platform, "STAGE 1 COMPLETE", COLORS.Dark)
+
+	local base = createPart(parent, "Stage1CheckpointBase", Vector3.new(18, 0.16, 10), Vector3.new(0, 7.02, 172), COLORS.CheckpointAccent, Enum.Material.Neon, {
+		CanCollide = false,
+		CanTouch = false,
+		Transparency = 0.28,
+	})
+
+	local pad = createPart(parent, "Stage1Checkpoint", Vector3.new(15, 0.35, 7), Vector3.new(0, 7.22, 172), COLORS.Checkpoint, Enum.Material.Neon, {
+		CanCollide = false,
+	})
+	pad:SetAttribute("CheckpointIndex", 1)
+	pad:SetAttribute("StageId", STAGE_1_ID)
+	pad:SetAttribute("CompletesStage", true)
+
+	createLabel(pad, "CHECKPOINT\n+150 COINS", 5, UDim2.fromOffset(230, 72))
+	createSurfaceLabel(pad, "CHECKPOINT", COLORS.Dark)
+
+	return {
+		{
+			id = "world_1_stage_1_checkpoint",
+			index = 1,
+			order = 1,
+			stageId = STAGE_1_ID,
+			completesStage = true,
+			part = pad,
+			base = base,
+			platform = platform,
+			respawnCFrame = createPlayerFacingCFrame(Vector3.new(0, 10.2, 172)),
+		},
 	}
+end
 
-	for index, platformData in ipairs(platforms) do
-		local platform = createPart(parent, platformData[1], platformData[2], platformData[3], platformData[4], Enum.Material.SmoothPlastic)
+local function createStageTwoPlaceholder(parent)
+	local platform = createPart(parent, "Stage2PlaceholderPlatform", Vector3.new(30, 1, 22), Vector3.new(0, 6.4, 195), COLORS.Finish, Enum.Material.SmoothPlastic)
+	createSurfaceLabel(platform, "STAGE 2", COLORS.Dark)
 
-		if index == 1 or index == 6 or index == 10 then
-			createArrow(parent, platform.Position + Vector3.new(0, 0.62, 0.4), COLORS.Start)
-		end
+	createPart(parent, "Stage2GateLeftPost", Vector3.new(2, 11, 2), Vector3.new(-10, 12, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "Stage2GateRightPost", Vector3.new(2, 11, 2), Vector3.new(10, 12, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
+	createPart(parent, "Stage2GateTop", Vector3.new(22, 2, 2), Vector3.new(0, 18, 202), COLORS.Dark, Enum.Material.SmoothPlastic)
+
+	local closedDoor = createPart(parent, "Stage2ComingNextDoor", Vector3.new(17, 8, 1), Vector3.new(0, 11, 203), COLORS.Start, Enum.Material.ForceField, {
+		Transparency = 0.2,
+	})
+	createLabel(closedDoor, "STAGE 2\nCOMING NEXT", 0, UDim2.fromOffset(280, 90))
+end
+
+local function createScenery(parent)
+	for index, rock in ipairs({
+		{ position = Vector3.new(-34, 4.2, 36), size = Vector3.new(5, 7, 5) },
+		{ position = Vector3.new(33, 5.5, 66), size = Vector3.new(6, 9, 6) },
+		{ position = Vector3.new(-31, 5.1, 106), size = Vector3.new(7, 8, 7) },
+		{ position = Vector3.new(35, 4.7, 138), size = Vector3.new(5, 8, 5) },
+	}) do
+		createPart(parent, string.format("VolcanicSideRock%02d", index), rock.size, rock.position, Color3.fromRGB(43, 39, 40), Enum.Material.Slate, {
+			CanTouch = false,
+			Shape = Enum.PartType.Ball,
+		})
 	end
 end
 
@@ -246,22 +316,22 @@ function CourseBuilder.build()
 	courseFolder.Name = ObbyConfig.CourseFolderName
 	courseFolder.Parent = workspace
 
-	local _, startPad = createSpawn(courseFolder)
-	createStaticCourse(courseFolder)
-	local checkpoints = createCheckpoints(courseFolder)
-	local hazards = createHazards(courseFolder)
-	createMovingPlatform(courseFolder)
-	local _, finishPad = createFinish(courseFolder)
+	local startPad = createStartArea(courseFolder)
+	local hazards = createLava(courseFolder)
+	createBoulderRun(courseFolder)
+	createScenery(courseFolder)
+	local checkpoints = createCheckpoint(courseFolder)
+	createStageTwoPlaceholder(courseFolder)
 
 	return {
 		folder = courseFolder,
-		worldId = PROTOTYPE_WORLD_ID,
-		startStageId = PROTOTYPE_STAGE_ID,
-		finishStageId = PROTOTYPE_STAGE_ID,
+		worldId = WORLD_ID,
+		startStageId = STAGE_1_ID,
+		finishStageId = nil,
 		startPad = startPad,
 		startSpawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
 		startRespawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
-		finishPad = finishPad,
+		finishPad = nil,
 		checkpoints = checkpoints,
 		hazards = hazards,
 	}

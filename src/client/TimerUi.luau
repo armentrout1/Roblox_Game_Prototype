@@ -178,6 +178,10 @@ function TimerUi.start()
 			if running then
 				flashStatus(string.format("Stage %d complete!", payload.stageNumber), ObbyConfig.Colors.Finish, 1.25)
 			end
+		elseif payload.type == "StageStarted" then
+			if running then
+				flashStatus(string.format("Stage %d next", payload.stageNumber), ObbyConfig.Colors.Start, 1.5)
+			end
 		elseif payload.type == "PassiveUnlocked" then
 			if running then
 				flashStatus(payload.displayName .. " unlocked!", ObbyConfig.Colors.CheckpointAccent, 1.5)

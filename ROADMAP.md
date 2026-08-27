@@ -5,8 +5,10 @@
 - Core playable obby prototype is complete.
 - Checkpoints and respawn are implemented, with Studio verification still pending.
 - Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
+- World 1 Stage 1 - Lava Boulders is implemented as the first real content pass.
+- World 1 Stage 2 - Yellow Noobs has not been started; the current course ends at a safe Stage 2 placeholder gate.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course remains the Milestone 1/2 prototype until World 1 content is built in smaller passes.
+- Current course is Stage 1 only. Reaching the Stage 1 checkpoint marks Stage 1 complete and advances run state to Stage 2 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -79,7 +81,8 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## World 1 - First Content Pass
 
-- Build Stage 1 - Lava Boulders.
+- Complete: Stage 1 - Lava Boulders.
+- Not started: Stage 2 - Yellow Noobs.
 - Build Stage 2 - Yellow Noobs.
 - Build Stage 3 - Ninja Wall Run.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
@@ -118,9 +121,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Begin World 1 - First Content Pass only after approval:
+Continue World 1 - First Content Pass only after Stage 1 Studio testing:
 
-- Build Stage 1 - Lava Boulders as the first real World 1 stage.
+- Build Stage 2 - Yellow Noobs.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the prototype still works before replacing or extending it with Stage 1 content.
+- Verify the Stage 1 checkpoint, coin reward, respawn, and Stage 2 placeholder before adding Stage 2 content.

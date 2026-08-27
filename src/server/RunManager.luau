@@ -70,9 +70,11 @@ function RunManager:start()
 		self:_onStartTouched(hit)
 	end)
 
-	self._course.finishPad.Touched:Connect(function(hit)
-		self:_onFinishTouched(hit)
-	end)
+	if self._course.finishPad then
+		self._course.finishPad.Touched:Connect(function(hit)
+			self:_onFinishTouched(hit)
+		end)
+	end
 
 	for _, checkpoint in ipairs(self._course.checkpoints) do
 		checkpoint.part.Touched:Connect(function(hit)
@@ -176,6 +178,10 @@ function RunManager:_onCheckpointTouched(checkpoint, hit)
 		coinAward = result.reward and result.reward.amount or 0,
 		coinsEarnedThisRun = result.reward and result.reward.coinsEarnedThisRun or self._runState:get(player).coinsEarnedThisRun,
 	})
+
+	if checkpoint.completesStage then
+		self._stageManager:completeStage(player, checkpoint.stageId or self._runState:get(player).currentStageId)
+	end
 end
 
 function RunManager:_onFinishTouched(hit)
