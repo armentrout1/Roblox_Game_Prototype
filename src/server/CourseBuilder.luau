@@ -6,6 +6,11 @@ local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local CourseBuilder = {}
 
 local COLORS = ObbyConfig.Colors
+local COURSE_FORWARD = Vector3.new(0, 0, 1)
+
+local function createCourseFacingCFrame(position)
+	return CFrame.lookAt(position, position + COURSE_FORWARD)
+end
 
 local function createPart(parent, name, size, position, color, material, properties)
 	local part = Instance.new("Part")
@@ -109,7 +114,7 @@ local function createSpawn(parent)
 	spawnLocation.Duration = 0
 	spawnLocation.Neutral = true
 	spawnLocation.Size = Vector3.new(8, 1, 8)
-	spawnLocation.Position = Vector3.new(0, 3, -4)
+	spawnLocation.CFrame = createCourseFacingCFrame(Vector3.new(0, 3, -4))
 	spawnLocation.Color = COLORS.Spawn
 	spawnLocation.Material = Enum.Material.ForceField
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
@@ -155,7 +160,7 @@ local function createCheckpoint(parent, index, size, position)
 		index = index,
 		part = pad,
 		base = base,
-		respawnCFrame = CFrame.new(position + Vector3.new(0, 5, 0)),
+		respawnCFrame = createCourseFacingCFrame(position + Vector3.new(0, 5, 0)),
 	}
 end
 
@@ -244,7 +249,7 @@ function CourseBuilder.build()
 	return {
 		folder = courseFolder,
 		startPad = startPad,
-		startRespawnCFrame = CFrame.new(0, 8, -4),
+		startRespawnCFrame = createCourseFacingCFrame(Vector3.new(0, 8, -4)),
 		finishPad = finishPad,
 		checkpoints = checkpoints,
 		hazards = hazards,
