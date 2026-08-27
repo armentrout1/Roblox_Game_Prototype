@@ -8,8 +8,11 @@ local CourseBuilder = {}
 local COLORS = ObbyConfig.Colors
 local WORLD_ID = WorldConfig.CurrentWorldId
 local STAGE_1_ID = WorldConfig.Worlds[WORLD_ID].stages[1].id
-local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, 1)
 local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -5)
+local START_SPAWN_LOCATION_POSITION = Vector3.new(0, 3, -5)
+local START_PAD_POSITION = Vector3.new(0, 3.05, 8)
+local STAGE_1_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 10.2, 172)
+local STAGE_2_GATE_TARGET_POSITION = Vector3.new(0, 10.2, 203)
 
 local LAVA_FIELD = {
 	size = Vector3.new(92, 0.6, 205),
@@ -37,8 +40,39 @@ local BOULDER_COLORS = {
 	Color3.fromRGB(46, 45, 48),
 }
 
-local function createPlayerFacingCFrame(position)
-	return CFrame.lookAt(position, position + PLAYER_SPAWN_LOOK_DIRECTION)
+local BOULDER_TUNING = {
+	visualHorizontalScale = 1.45,
+	visualHeightScale = 1.75,
+	earlyLandingRatio = 0.84,
+	midLandingRatio = 0.78,
+	lateLandingRatio = 0.72,
+}
+
+local function createFacingCFrame(position, lookAtPosition)
+	local flatLookAt = Vector3.new(lookAtPosition.X, position.Y, lookAtPosition.Z)
+	if (flatLookAt - position).Magnitude < 0.01 then
+		flatLookAt = position + Vector3.new(0, 0, 1)
+	end
+
+	return CFrame.lookAt(position, flatLookAt)
+end
+
+local function getBoulderVisualSize(config)
+	return Vector3.new(
+		config.size.X * BOULDER_TUNING.visualHorizontalScale,
+		config.size.Y * BOULDER_TUNING.visualHeightScale,
+		config.size.Z * BOULDER_TUNING.visualHorizontalScale
+	)
+end
+
+local function getLandingRatio(index)
+	if index <= 4 then
+		return BOULDER_TUNING.earlyLandingRatio
+	elseif index <= 8 then
+		return BOULDER_TUNING.midLandingRatio
+	end
+
+	return BOULDER_TUNING.lateLandingRatio
 end
 
 local function createPart(parent, name, size, positionOrCFrame, color, material, properties)
@@ -167,7 +201,7 @@ local function createStartArea(parent)
 	spawnLocation.Duration = 0
 	spawnLocation.Neutral = true
 	spawnLocation.Size = Vector3.new(8, 1, 8)
-	spawnLocation.CFrame = createPlayerFacingCFrame(Vector3.new(0, 3, -5))
+	spawnLocation.CFrame = createFacingCFrame(START_SPAWN_LOCATION_POSITION, START_PAD_POSITION)
 	spawnLocation.Color = COLORS.Spawn
 	spawnLocation.Material = Enum.Material.ForceField
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
@@ -215,17 +249,19 @@ end
 
 local function createBoulder(parent, index, config)
 	local rotation = config.rotation or Vector3.zero
+	local visualSize = getBoulderVisualSize(config)
 	local boulderCFrame = CFrame.new(config.position) * CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 
-	local boulder = createPart(parent, string.format("Stage1Boulder%02d", index), config.size, boulderCFrame, BOULDER_COLORS[((index - 1) % #BOULDER_COLORS) + 1], Enum.Material.Slate, {
+	local boulder = createPart(parent, string.format("Stage1Boulder%02d", index), visualSize, boulderCFrame, BOULDER_COLORS[((index - 1) % #BOULDER_COLORS) + 1], Enum.Material.Slate, {
 		CanCollide = false,
 		CanTouch = false,
 		Shape = Enum.PartType.Ball,
 	})
 
-	local topY = config.position.Y + (config.size.Y / 2)
+	local landingRatio = getLandingRatio(index)
+	local topY = config.position.Y + (visualSize.Y / 2)
 	-- Invisible flat landings keep the volcanic rocks playful instead of slippery.
-	createPart(parent, string.format("Stage1Boulder%02dLanding", index), Vector3.new(config.size.X * 0.64, 0.2, config.size.Z * 0.64), Vector3.new(config.position.X, topY + 0.08, config.position.Z), COLORS.White, Enum.Material.SmoothPlastic, {
+	createPart(parent, string.format("Stage1Boulder%02dLanding", index), Vector3.new(visualSize.X * landingRatio, 0.2, visualSize.Z * landingRatio), Vector3.new(config.position.X, topY + 0.08, config.position.Z), COLORS.White, Enum.Material.SmoothPlastic, {
 		CanTouch = false,
 		Transparency = 1,
 	})
@@ -273,7 +309,9 @@ local function createCheckpoint(parent)
 			part = pad,
 			base = base,
 			platform = platform,
-			respawnCFrame = createPlayerFacingCFrame(Vector3.new(0, 10.2, 172)),
+			respawnPosition = STAGE_1_CHECKPOINT_RESPAWN_POSITION,
+			respawnLookAt = STAGE_2_GATE_TARGET_POSITION,
+			respawnCFrame = createFacingCFrame(STAGE_1_CHECKPOINT_RESPAWN_POSITION, STAGE_2_GATE_TARGET_POSITION),
 		},
 	}
 end
@@ -329,8 +367,8 @@ function CourseBuilder.build()
 		startStageId = STAGE_1_ID,
 		finishStageId = nil,
 		startPad = startPad,
-		startSpawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
-		startRespawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
+		startSpawnCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION),
+		startRespawnCFrame = createFacingCFrame(START_CHARACTER_POSITION, START_PAD_POSITION),
 		finishPad = nil,
 		checkpoints = checkpoints,
 		hazards = hazards,

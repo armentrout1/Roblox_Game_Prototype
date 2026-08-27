@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local BuffService = require(script.Parent:WaitForChild("BuffService"))
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
@@ -26,6 +27,12 @@ local function findPlayerFromHit(hit)
 	end
 
 	return Players:GetPlayerFromCharacter(character), humanoid
+end
+
+local function applyCharacterTransform(character, rootPart, targetCFrame)
+	rootPart.AssemblyLinearVelocity = Vector3.zero
+	rootPart.AssemblyAngularVelocity = Vector3.zero
+	character:PivotTo(targetCFrame)
 end
 
 function RunManager.new(course)
@@ -275,7 +282,22 @@ function RunManager:_teleportCharacter(character, targetCFrame)
 		return
 	end
 
-	character:PivotTo(targetCFrame)
+	local originalAutoRotate = humanoid.AutoRotate
+	humanoid.AutoRotate = false
+	applyCharacterTransform(character, rootPart, targetCFrame)
+
+	RunService.Heartbeat:Wait()
+	if not character.Parent or not humanoid.Parent or not rootPart.Parent or humanoid.Health <= 0 then
+		return
+	end
+
+	-- Apply once more after Roblox's spawn placement settles so the intended facing wins deterministically.
+	applyCharacterTransform(character, rootPart, targetCFrame)
+	task.defer(function()
+		if humanoid.Parent then
+			humanoid.AutoRotate = originalAutoRotate
+		end
+	end)
 end
 
 function RunManager:_getRespawnCFrame(state)
