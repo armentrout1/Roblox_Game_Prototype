@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
+local RcCarConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("RcCarConfig"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local Stage4RcMazeBuilder = {}
@@ -15,10 +16,17 @@ local STAGE_4_CONTROL_LOOK_AT = Vector3.new(0, 13.4, 660)
 local STAGE_4_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 13.4, 858)
 local STAGE_5_TARGET_POSITION = Vector3.new(0, 13.4, 894)
 
-local MAZE_CENTER = Vector3.new(52, 10.2, 752)
-local MAZE_SIZE = Vector3.new(82, 1, 158)
-local RC_START_POSITION = Vector3.new(28, 12.2, 686)
-local RC_GOAL_POSITION = Vector3.new(75, 10.95, 814)
+local MAZE_TUNING = RcCarConfig.Maze
+local MAZE_CENTER = Vector3.new(58, 10.2, 752)
+local MAZE_SIZE = Vector3.new(MAZE_TUNING.Width, 1, MAZE_TUNING.Length)
+local MAZE_MIN_X = MAZE_CENTER.X - (MAZE_TUNING.Width / 2)
+local MAZE_MAX_X = MAZE_CENTER.X + (MAZE_TUNING.Width / 2)
+local MAZE_MIN_Z = MAZE_CENTER.Z - (MAZE_TUNING.Length / 2)
+local MAZE_MAX_Z = MAZE_CENTER.Z + (MAZE_TUNING.Length / 2)
+local STANDARD_OPENING_WIDTH = MAZE_TUNING.CorridorWidth + MAZE_TUNING.BevelSize
+local FIRST_TURN_OPENING_WIDTH = MAZE_TUNING.CorridorWidth + MAZE_TUNING.TurnPocketWidth
+local RC_START_POSITION = Vector3.new(24, 12.2, 676)
+local RC_GOAL_POSITION = Vector3.new(92, 10.95, 828)
 
 local STAGE_COLORS = {
 	Concrete = Color3.fromRGB(84, 89, 104),
@@ -30,36 +38,60 @@ local STAGE_COLORS = {
 	Arrow = Color3.fromRGB(255, 224, 74),
 }
 
+local function horizontalWall(name, startX, endX, z)
+	return {
+		name = name,
+		position = Vector3.new((startX + endX) / 2, 13.2, z),
+		size = Vector3.new(math.abs(endX - startX), 5, MAZE_TUNING.WallThickness),
+	}
+end
+
+local function verticalWall(name, x, startZ, endZ)
+	return {
+		name = name,
+		position = Vector3.new(x, 13.2, (startZ + endZ) / 2),
+		size = Vector3.new(MAZE_TUNING.WallThickness, 5, math.abs(endZ - startZ)),
+	}
+end
+
 local MAZE_WALLS = {
-	{ name = "OuterLeft", position = Vector3.new(10, 13.2, 752), size = Vector3.new(2, 5, 158) },
-	{ name = "OuterRight", position = Vector3.new(94, 13.2, 752), size = Vector3.new(2, 5, 158) },
-	{ name = "OuterBack", position = Vector3.new(52, 13.2, 674), size = Vector3.new(84, 5, 2) },
-	{ name = "OuterFront", position = Vector3.new(52, 13.2, 830), size = Vector3.new(84, 5, 2) },
-	{ name = "TeachTurnNorth", position = Vector3.new(44, 13.2, 704), size = Vector3.new(56, 5, 2) },
-	{ name = "TeachTurnSouth", position = Vector3.new(60, 13.2, 728), size = Vector3.new(56, 5, 2) },
-	{ name = "MiddleNorth", position = Vector3.new(60, 13.2, 752), size = Vector3.new(56, 5, 2) },
-	{ name = "MiddleSouth", position = Vector3.new(44, 13.2, 774), size = Vector3.new(56, 5, 2) },
-	{ name = "FinalNorth", position = Vector3.new(35, 13.2, 796), size = Vector3.new(46, 5, 2) },
-	{ name = "StartGuideLeft", position = Vector3.new(20, 13.2, 685), size = Vector3.new(2, 5, 18) },
-	{ name = "StartGuideRight", position = Vector3.new(36, 13.2, 685), size = Vector3.new(2, 5, 18) },
-	{ name = "RightLaneInner", position = Vector3.new(66, 13.2, 740), size = Vector3.new(2, 5, 24) },
-	{ name = "BridgeGuideLeft", position = Vector3.new(68, 13.2, 788), size = Vector3.new(2, 5, 26) },
-	{ name = "BridgeGuideRight", position = Vector3.new(88, 13.2, 788), size = Vector3.new(2, 5, 26) },
+	verticalWall("OuterLeft", MAZE_MIN_X, MAZE_MIN_Z, MAZE_MAX_Z),
+	verticalWall("OuterRight", MAZE_MAX_X, MAZE_MIN_Z, MAZE_MAX_Z),
+	horizontalWall("OuterBack", MAZE_MIN_X, MAZE_MAX_X, MAZE_MIN_Z),
+	horizontalWall("OuterFront", MAZE_MIN_X, MAZE_MAX_X, MAZE_MAX_Z),
+	horizontalWall("TeachTurnNorth", MAZE_MIN_X, MAZE_MAX_X - FIRST_TURN_OPENING_WIDTH, 704),
+	horizontalWall("TeachTurnSouth", MAZE_MIN_X + STANDARD_OPENING_WIDTH + 8, MAZE_MAX_X, 734),
+	horizontalWall("MiddleNorth", MAZE_MIN_X, MAZE_MAX_X - STANDARD_OPENING_WIDTH, 764),
+	horizontalWall("MiddleSouth", MAZE_MIN_X + STANDARD_OPENING_WIDTH, MAZE_MAX_X, 794),
+	horizontalWall("FinalNorth", MAZE_MIN_X, MAZE_MAX_X - STANDARD_OPENING_WIDTH - 4, 820),
+	verticalWall("StartGuideLeft", 12, 670, 694),
+	verticalWall("StartGuideRight", 42, 670, 694),
+	verticalWall("BridgeGuideLeft", 76, 800, 826),
+	verticalWall("BridgeGuideRight", 108, 800, 826),
+}
+
+local CORNER_POCKETS = {
+	{ position = Vector3.new(88, 10.94, 704), size = Vector3.new(36, 0.12, 18) },
+	{ position = Vector3.new(25, 10.94, 734), size = Vector3.new(34, 0.12, 18) },
+	{ position = Vector3.new(90, 10.94, 764), size = Vector3.new(34, 0.12, 18) },
+	{ position = Vector3.new(24, 10.94, 794), size = Vector3.new(34, 0.12, 18) },
+	{ position = Vector3.new(89, 10.94, 820), size = Vector3.new(36, 0.12, 18) },
 }
 
 local BUMPS = {
-	{ position = Vector3.new(73, 11.3, 738), size = Vector3.new(6, 1.1, 2) },
-	{ position = Vector3.new(34, 11.3, 760), size = Vector3.new(2, 1.1, 6) },
-	{ position = Vector3.new(69, 11.3, 805), size = Vector3.new(5, 1.1, 2) },
+	{ position = Vector3.new(82, 11.08, 722), size = Vector3.new(4.5, 0.65, 1.8) },
+	{ position = Vector3.new(30, 11.08, 751), size = Vector3.new(1.8, 0.65, 4.5) },
+	{ position = Vector3.new(91, 11.08, 812), size = Vector3.new(4.5, 0.65, 1.8) },
 }
 
 local ARROWS = {
-	{ position = Vector3.new(28, 10.95, 696), yaw = 0 },
-	{ position = Vector3.new(60, 10.95, 718), yaw = 90 },
-	{ position = Vector3.new(74, 10.95, 740), yaw = 0 },
-	{ position = Vector3.new(44, 10.95, 764), yaw = -90 },
-	{ position = Vector3.new(34, 10.95, 790), yaw = 0 },
-	{ position = Vector3.new(62, 10.95, 807), yaw = 90 },
+	{ position = Vector3.new(24, 10.95, 688), yaw = 0 },
+	{ position = Vector3.new(75, 10.95, 704), yaw = 90 },
+	{ position = Vector3.new(86, 10.95, 724), yaw = 0 },
+	{ position = Vector3.new(34, 10.95, 735), yaw = -90 },
+	{ position = Vector3.new(24, 10.95, 754), yaw = 0 },
+	{ position = Vector3.new(82, 10.95, 765), yaw = 90 },
+	{ position = Vector3.new(94, 10.95, 808), yaw = 0 },
 }
 
 local function createFacingCFrame(position, lookAtPosition)
@@ -202,13 +234,21 @@ local function createMaze(parent)
 		createPart(mazeFolder, "Stage4MazeWall" .. wall.name, wall.size, wall.position, STAGE_COLORS.Rail, Enum.Material.Concrete)
 	end
 
+	for _, pocket in ipairs(CORNER_POCKETS) do
+		createPart(mazeFolder, "Stage4RcCornerPocket", pocket.size, pocket.position, Color3.fromRGB(64, 72, 88), Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+			Transparency = 0.16,
+		})
+	end
+
 	for _, bump in ipairs(BUMPS) do
 		createPart(mazeFolder, "Stage4RcBump", bump.size, bump.position, STAGE_COLORS.Concrete, Enum.Material.SmoothPlastic)
 	end
 
-	createPart(mazeFolder, "Stage4RcBridge", Vector3.new(16, 0.8, 18), Vector3.new(78, 11.1, 789), Color3.fromRGB(76, 81, 96), Enum.Material.Metal)
-	createPart(mazeFolder, "Stage4RcBridgeRampA", Vector3.new(16, 0.5, 8), CFrame.new(78, 10.95, 776) * CFrame.Angles(math.rad(-6), 0, 0), Color3.fromRGB(92, 96, 110), Enum.Material.Metal)
-	createPart(mazeFolder, "Stage4RcBridgeRampB", Vector3.new(16, 0.5, 8), CFrame.new(78, 10.95, 802) * CFrame.Angles(math.rad(6), 0, 0), Color3.fromRGB(92, 96, 110), Enum.Material.Metal)
+	createPart(mazeFolder, "Stage4RcBridge", Vector3.new(24, 0.7, 16), Vector3.new(92, 11.05, 812), Color3.fromRGB(76, 81, 96), Enum.Material.Metal)
+	createPart(mazeFolder, "Stage4RcBridgeRampA", Vector3.new(24, 0.45, 8), CFrame.new(92, 10.9, 801) * CFrame.Angles(math.rad(-5), 0, 0), Color3.fromRGB(92, 96, 110), Enum.Material.Metal)
+	createPart(mazeFolder, "Stage4RcBridgeRampB", Vector3.new(24, 0.45, 8), CFrame.new(92, 10.9, 825) * CFrame.Angles(math.rad(5), 0, 0), Color3.fromRGB(92, 96, 110), Enum.Material.Metal)
 
 	for _, arrow in ipairs(ARROWS) do
 		createArrow(mazeFolder, arrow.position, arrow.yaw)
@@ -228,7 +268,7 @@ local function createMaze(parent)
 	light.Parent = goal
 
 	local rcCarsFolder = Instance.new("Folder")
-	rcCarsFolder.Name = "Stage4PlayerRcCars"
+	rcCarsFolder.Name = RcCarConfig.CarFolderName
 	rcCarsFolder.Parent = parent
 
 	return {
@@ -237,10 +277,10 @@ local function createMaze(parent)
 		goal = goal,
 		rcCarsFolder = rcCarsFolder,
 		bounds = {
-			minX = 12,
-			maxX = 92,
-			minZ = 674,
-			maxZ = 830,
+			minX = MAZE_MIN_X - 4,
+			maxX = MAZE_MAX_X + 4,
+			minZ = MAZE_MIN_Z,
+			maxZ = MAZE_MAX_Z,
 			minY = 7,
 			maxY = 35,
 		},

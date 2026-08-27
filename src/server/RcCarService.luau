@@ -85,6 +85,7 @@ function RcCarService.new(stage4Data, runState, obbyRemote)
 		_remote = getOrCreateRemoteEvent(RcCarConfig.RemoteEventName),
 		_sessions = {},
 		_completedPlayers = {},
+		_nextSessionId = 0,
 	}, RcCarService)
 end
 
@@ -171,8 +172,11 @@ function RcCarService:_tryStartSession(player)
 		return
 	end
 
-	local car = self:_createCar(player)
+	self._nextSessionId += 1
+	local sessionId = self._nextSessionId
+	local car = self:_createCar(player, sessionId)
 	local session = {
+		sessionId = sessionId,
 		player = player,
 		character = character,
 		humanoid = humanoid,
@@ -200,9 +204,15 @@ function RcCarService:_tryStartSession(player)
 
 	self._remote:FireClient(player, {
 		type = RcCarConfig.Messages.Started,
+		sessionId = session.sessionId,
 		carModel = session.carModel,
 		carRoot = session.carRoot,
+		carModelName = session.carModel.Name,
+		carRootName = session.carRoot.Name,
 		doorVisual = self._stage4.doorVisual,
+		originalWalkSpeed = session.originalWalkSpeed,
+		originalJumpPower = session.originalJumpPower,
+		originalAutoRotate = session.originalAutoRotate,
 	})
 end
 
@@ -247,7 +257,10 @@ function RcCarService:_resetCar(player, reason)
 	self._remote:FireClient(player, {
 		type = RcCarConfig.Messages.Reset,
 		reason = reason or "Reset",
+		sessionId = session.sessionId,
 		carRoot = session.carRoot,
+		carModelName = session.carModel.Name,
+		carRootName = session.carRoot.Name,
 	})
 end
 
@@ -310,13 +323,13 @@ function RcCarService:_completeMaze(player)
 	self:endSession(player, "Completed")
 end
 
-function RcCarService:_createCar(player)
+function RcCarService:_createCar(player, sessionId)
 	local model = Instance.new("Model")
-	model.Name = "Stage4RcCar_" .. tostring(player.UserId)
+	model.Name = string.format("%s%d_%d", RcCarConfig.CarModelPrefix, player.UserId, sessionId)
 	model.Parent = self._stage4.rcCarsFolder
 
 	local root = Instance.new("Part")
-	root.Name = "RcCarBody"
+	root.Name = RcCarConfig.CarRootName
 	root.Anchored = false
 	root.CanCollide = true
 	root.CanTouch = false

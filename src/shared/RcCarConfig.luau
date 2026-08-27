@@ -1,6 +1,9 @@
 local RcCarConfig = {}
 
 RcCarConfig.RemoteEventName = "RcCarEvent"
+RcCarConfig.CarFolderName = "Stage4PlayerRcCars"
+RcCarConfig.CarModelPrefix = "Stage4RcCar_"
+RcCarConfig.CarRootName = "RcCarBody"
 
 RcCarConfig.Actions = {
 	Input = "Input",
@@ -35,6 +38,30 @@ RcCarConfig.Input = {
 	ThrottleReverse = -1,
 	SteerLeft = -1,
 	SteerRight = 1,
+}
+
+RcCarConfig.Camera = {
+	DefaultMode = "Chase",
+	ChaseMode = "Chase",
+	AerialMode = "Aerial",
+	ChaseDistance = 20,
+	ChaseHeight = 11,
+	ChaseLookAhead = 7,
+	ChaseSmoothingResponsiveness = 10,
+	AerialHeight = 62,
+	AerialBackOffset = 12,
+	AerialLookAhead = 4,
+	AerialSmoothingResponsiveness = 12,
+	CarResolveTimeout = 4,
+}
+
+RcCarConfig.Maze = {
+	Width = 104,
+	Length = 174,
+	WallThickness = 2,
+	CorridorWidth = 24,
+	TurnPocketWidth = 26,
+	BevelSize = 8,
 }
 
 return RcCarConfig

@@ -10,6 +10,7 @@
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
 - World 1 Stage 4 - RC Car Maze is implemented as a distinct remote-control mini-game with server-owned completion and CP 4 progression.
+- Stage 4 RC camera and maze tuning pass is complete: first-start camera binding is more reliable, Chase/Aerial camera modes are available, and the maze has wider turns.
 - The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 5 - Tsunami Run has not been started; the current course ends at a safe Stage 5 placeholder gate.
 - Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, resetting a run, and returning to the start without beginning Stage 5 work.
@@ -85,6 +86,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: stage module/controller pattern documentation.
 - Complete: developer-only stage selector for Studio testing of currently implemented stages.
 - Complete: Stage 4 RC session service keeps mini-game completion server-authoritative while the client handles input, camera, and HUD presentation.
+- Complete: Stage 4 RC tuning pass added robust client car readiness binding, Chase/Aerial camera modes, and a more forgiving maze layout.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -101,6 +103,7 @@ The game should evolve from a single generated prototype into reusable systems:
 ## World 1 - Interactive Stages
 
 - Complete: Stage 4 - RC Car Maze with player-specific RC completion gate.
+- Complete: Stage 4 tuning pass for RC camera startup, camera mode toggle, and easier maze navigation.
 - Not started: Stage 5 - Tsunami Run.
 - Build Stage 5 - Tsunami Run with safe areas.
 - Build Stage 6 - Basketball Challenge with shot meter and three required shots.

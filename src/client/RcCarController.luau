@@ -25,6 +25,10 @@ local originalCameraSubject = nil
 local originalWalkSpeed = nil
 local originalJumpPower = nil
 local originalAutoRotate = nil
+local cameraMode = RcCarConfig.Camera.DefaultMode
+local cameraCFrame = nil
+local cameraBindToken = 0
+local activeSessionId = nil
 
 local keysDown = {
 	forward = false,
@@ -35,7 +39,11 @@ local keysDown = {
 local lastThrottle = 0
 local lastSteer = 0
 
-local function createButton(parent, name, text, position, color)
+local function getCameraButtonText()
+	return "CAMERA: " .. string.upper(cameraMode)
+end
+
+local function createButton(parent, name, text, position, color, size)
 	local button = Instance.new("TextButton")
 	button.Name = name
 	button.AutoButtonColor = true
@@ -43,7 +51,7 @@ local function createButton(parent, name, text, position, color)
 	button.BorderSizePixel = 0
 	button.Font = Enum.Font.GothamBold
 	button.Position = position
-	button.Size = UDim2.fromOffset(118, 34)
+	button.Size = size or UDim2.fromOffset(118, 34)
 	button.Text = text
 	button.TextColor3 = ObbyConfig.Colors.White
 	button.TextSize = 14
@@ -77,7 +85,7 @@ local function createHud()
 	panel.BackgroundTransparency = 0.08
 	panel.BorderSizePixel = 0
 	panel.Position = UDim2.new(0.5, 0, 1, -28)
-	panel.Size = UDim2.fromOffset(430, 118)
+	panel.Size = UDim2.fromOffset(500, 128)
 	panel.Parent = screenGui
 
 	local corner = Instance.new("UICorner")
@@ -112,11 +120,25 @@ local function createHud()
 	instructions.TextSize = 15
 	instructions.Parent = panel
 
-	local resetButton = createButton(panel, "ResetButton", "RESET RC CAR", UDim2.fromOffset(82, 72), Color3.fromRGB(75, 93, 128))
-	local exitButton = createButton(panel, "ExitButton", "EXIT RC", UDim2.fromOffset(230, 72), Color3.fromRGB(118, 54, 62))
+	local cameraModeLabel = Instance.new("TextLabel")
+	cameraModeLabel.Name = "CameraModeLabel"
+	cameraModeLabel.BackgroundTransparency = 1
+	cameraModeLabel.Font = Enum.Font.GothamBold
+	cameraModeLabel.Position = UDim2.fromOffset(16, 64)
+	cameraModeLabel.Size = UDim2.new(1, -32, 0, 18)
+	cameraModeLabel.Text = "Camera: Chase  |  C toggles camera"
+	cameraModeLabel.TextColor3 = Color3.fromRGB(171, 230, 255)
+	cameraModeLabel.TextSize = 13
+	cameraModeLabel.Parent = panel
+
+	local cameraButton = createButton(panel, "CameraButton", getCameraButtonText(), UDim2.fromOffset(22, 88), Color3.fromRGB(39, 117, 155), UDim2.fromOffset(138, 32))
+	local resetButton = createButton(panel, "ResetButton", "RESET RC CAR", UDim2.fromOffset(190, 88), Color3.fromRGB(75, 93, 128), UDim2.fromOffset(118, 32))
+	local exitButton = createButton(panel, "ExitButton", "EXIT RC", UDim2.fromOffset(338, 88), Color3.fromRGB(118, 54, 62), UDim2.fromOffset(118, 32))
 
 	return {
 		screenGui = screenGui,
+		cameraButton = cameraButton,
+		cameraModeLabel = cameraModeLabel,
 		resetButton = resetButton,
 		exitButton = exitButton,
 	}
@@ -130,37 +152,73 @@ end
 local function restoreCharacterControls()
 	local humanoid = getCharacterHumanoid()
 	if not humanoid then
+		originalWalkSpeed = nil
+		originalJumpPower = nil
+		originalAutoRotate = nil
 		return
 	end
 
-	if originalWalkSpeed then
+	if originalWalkSpeed ~= nil then
 		humanoid.WalkSpeed = originalWalkSpeed
 	end
-	if originalJumpPower then
+	if originalJumpPower ~= nil then
 		humanoid.JumpPower = originalJumpPower
 	end
 	if originalAutoRotate ~= nil then
 		humanoid.AutoRotate = originalAutoRotate
 	end
+
+	originalWalkSpeed = nil
+	originalJumpPower = nil
+	originalAutoRotate = nil
 end
 
-local function restrictCharacterControls()
+local function restrictCharacterControls(payload)
 	local humanoid = getCharacterHumanoid()
 	if not humanoid then
 		return
 	end
 
-	originalWalkSpeed = humanoid.WalkSpeed
-	originalJumpPower = humanoid.JumpPower
-	originalAutoRotate = humanoid.AutoRotate
+	originalWalkSpeed = payload.originalWalkSpeed or humanoid.WalkSpeed
+	originalJumpPower = payload.originalJumpPower or humanoid.JumpPower
+	originalAutoRotate = payload.originalAutoRotate
+	if originalAutoRotate == nil then
+		originalAutoRotate = humanoid.AutoRotate
+	end
 	humanoid.WalkSpeed = 0
 	humanoid.JumpPower = 0
 	humanoid.AutoRotate = false
 end
 
+local function updateCameraHud()
+	if not hud then
+		return
+	end
+
+	hud.cameraButton.Text = getCameraButtonText()
+	hud.cameraModeLabel.Text = "Camera: " .. cameraMode .. "  |  C toggles camera"
+end
+
+local function saveOriginalCamera()
+	local camera = workspace.CurrentCamera
+	if not camera then
+		return
+	end
+
+	if originalCameraType ~= nil then
+		return
+	end
+
+	originalCameraType = camera.CameraType
+	originalCameraSubject = camera.CameraSubject
+end
+
 local function restoreCamera()
 	local camera = workspace.CurrentCamera
 	if not camera then
+		originalCameraType = nil
+		originalCameraSubject = nil
+		cameraCFrame = nil
 		return
 	end
 
@@ -168,9 +226,34 @@ local function restoreCamera()
 	camera.CameraSubject = originalCameraSubject or getCharacterHumanoid()
 	originalCameraType = nil
 	originalCameraSubject = nil
+	cameraCFrame = nil
 end
 
-local function updateCamera()
+local function getFlatUnit(vector, fallback)
+	local flat = Vector3.new(vector.X, 0, vector.Z)
+	if flat.Magnitude < 0.01 then
+		return fallback
+	end
+
+	return flat.Unit
+end
+
+local function getTargetCameraCFrame()
+	local cameraConfig = RcCarConfig.Camera
+	local rootCFrame = carRoot.CFrame
+	local forward = getFlatUnit(rootCFrame.LookVector, Vector3.new(0, 0, 1))
+	local focusPosition = carRoot.Position + Vector3.new(0, 1.2, 0)
+
+	if cameraMode == cameraConfig.AerialMode then
+		local cameraPosition = carRoot.Position + Vector3.new(0, cameraConfig.AerialHeight, -cameraConfig.AerialBackOffset)
+		return CFrame.lookAt(cameraPosition, focusPosition + Vector3.new(0, 0, cameraConfig.AerialLookAhead))
+	end
+
+	local cameraPosition = carRoot.Position - (forward * cameraConfig.ChaseDistance) + Vector3.new(0, cameraConfig.ChaseHeight, 0)
+	return CFrame.lookAt(cameraPosition, focusPosition + (forward * cameraConfig.ChaseLookAhead))
+end
+
+local function updateCamera(deltaTime)
 	if not active or not carRoot or not carRoot.Parent then
 		return
 	end
@@ -180,22 +263,91 @@ local function updateCamera()
 		return
 	end
 
-	local rootCFrame = carRoot.CFrame
-	local focusPosition = carRoot.Position + (rootCFrame.LookVector * 6)
-	local cameraPosition = carRoot.Position - (rootCFrame.LookVector * 18) + Vector3.new(0, 10, 0)
-	camera.CFrame = CFrame.lookAt(cameraPosition, focusPosition)
+	local targetCFrame = getTargetCameraCFrame()
+	local responsiveness = cameraMode == RcCarConfig.Camera.AerialMode and RcCarConfig.Camera.AerialSmoothingResponsiveness or RcCarConfig.Camera.ChaseSmoothingResponsiveness
+	local alpha = math.clamp(1 - math.exp(-(deltaTime or 0.016) * responsiveness), 0, 1)
+
+	camera.CameraType = Enum.CameraType.Scriptable
+	cameraCFrame = cameraCFrame and cameraCFrame:Lerp(targetCFrame, alpha) or targetCFrame
+	camera.CFrame = cameraCFrame
 end
 
 local function setCameraToRc()
 	local camera = workspace.CurrentCamera
-	if not camera or not carRoot then
+	if not camera then
 		return
 	end
 
-	originalCameraType = camera.CameraType
-	originalCameraSubject = camera.CameraSubject
+	saveOriginalCamera()
 	camera.CameraType = Enum.CameraType.Scriptable
-	updateCamera()
+	updateCamera(1 / 60)
+end
+
+local function waitForNamedChild(parent, childName, timeout)
+	if not parent or not childName or childName == "" then
+		return nil
+	end
+
+	local child = parent:FindFirstChild(childName)
+	if child then
+		return child
+	end
+
+	return parent:WaitForChild(childName, timeout)
+end
+
+local function resolveCarRoot(payload)
+	if typeof(payload.carRoot) == "Instance" and payload.carRoot.Parent then
+		return payload.carRoot
+	end
+
+	local timeout = RcCarConfig.Camera.CarResolveTimeout
+	local rootName = payload.carRootName or RcCarConfig.CarRootName
+	local carModel = nil
+	if typeof(payload.carModel) == "Instance" and payload.carModel.Parent then
+		carModel = payload.carModel
+	else
+		local courseFolder = waitForNamedChild(workspace, ObbyConfig.CourseFolderName, timeout)
+		local carsFolder = waitForNamedChild(courseFolder, RcCarConfig.CarFolderName, timeout)
+		carModel = waitForNamedChild(carsFolder, payload.carModelName, timeout)
+	end
+
+	local root = waitForNamedChild(carModel, rootName, timeout)
+	if typeof(root) == "Instance" and root:IsA("BasePart") then
+		return root
+	end
+
+	return nil
+end
+
+local function bindCameraToPayload(payload, token)
+	local resolvedRoot = resolveCarRoot(payload)
+	if token ~= cameraBindToken or not active or (payload.sessionId and payload.sessionId ~= activeSessionId) then
+		return
+	end
+
+	if not resolvedRoot then
+		if hud then
+			hud.cameraModeLabel.Text = "RC car is still loading. Reset or exit if it gets stuck."
+		end
+		return
+	end
+
+	carRoot = resolvedRoot
+	cameraCFrame = nil
+	setCameraToRc()
+end
+
+local function toggleCameraMode()
+	if cameraMode == RcCarConfig.Camera.AerialMode then
+		cameraMode = RcCarConfig.Camera.ChaseMode
+	else
+		cameraMode = RcCarConfig.Camera.AerialMode
+	end
+
+	cameraCFrame = nil
+	updateCameraHud()
+	updateCamera(1 / 60)
 end
 
 local function resetInputState()
@@ -286,6 +438,9 @@ local function closeDoorLocally(targetDoor)
 end
 
 local function stopRcMode()
+	cameraBindToken += 1
+	active = false
+
 	if renderConnection then
 		renderConnection:Disconnect()
 		renderConnection = nil
@@ -295,8 +450,8 @@ local function stopRcMode()
 		hud.screenGui.Enabled = false
 	end
 
-	active = false
 	carRoot = nil
+	activeSessionId = nil
 	resetInputState()
 	restoreCharacterControls()
 	restoreCamera()
@@ -305,22 +460,34 @@ end
 local function startRcMode(payload)
 	stopRcMode()
 
+	cameraBindToken += 1
+	local token = cameraBindToken
 	active = true
-	carRoot = payload.carRoot
+	activeSessionId = payload.sessionId
+	cameraMode = RcCarConfig.Camera.DefaultMode
+	cameraCFrame = nil
+	carRoot = nil
 	doorVisual = payload.doorVisual or doorVisual
 	if doorVisual then
 		doorOriginalCFrame = doorOriginalCFrame or doorVisual.CFrame
 		doorOriginalTransparency = doorOriginalTransparency or doorVisual.Transparency
 	end
 
-	restrictCharacterControls()
+	restrictCharacterControls(payload)
 	setCameraToRc()
 
 	if hud then
+		updateCameraHud()
 		hud.screenGui.Enabled = true
 	end
 
-	renderConnection = RunService.RenderStepped:Connect(updateCamera)
+	renderConnection = RunService.RenderStepped:Connect(function(deltaTime)
+		updateCamera(deltaTime)
+	end)
+
+	task.spawn(function()
+		bindCameraToPayload(payload, token)
+	end)
 end
 
 function RcCarController.start()
@@ -340,6 +507,12 @@ function RcCarController.start()
 		end
 	end)
 
+	hud.cameraButton.Activated:Connect(function()
+		if active then
+			toggleCameraMode()
+		end
+	end)
+
 	hud.exitButton.Activated:Connect(function()
 		if active then
 			remote:FireServer({
@@ -350,6 +523,11 @@ function RcCarController.start()
 
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed or not active then
+			return
+		end
+
+		if input.KeyCode == Enum.KeyCode.C then
+			toggleCameraMode()
 			return
 		end
 
@@ -393,8 +571,11 @@ function RcCarController.start()
 		elseif payload.type == RcCarConfig.Messages.Ended then
 			stopRcMode()
 		elseif payload.type == RcCarConfig.Messages.Reset then
-			carRoot = payload.carRoot or carRoot
 			resetInputState()
+			local token = cameraBindToken
+			task.spawn(function()
+				bindCameraToPayload(payload, token)
+			end)
 		elseif payload.type == RcCarConfig.Messages.DoorLocked then
 			closeDoorLocally(payload.doorVisual)
 		end
