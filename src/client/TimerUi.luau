@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
 
@@ -59,6 +60,30 @@ local function createHud()
 	local coinsLabel = createText(panel, "CoinsLabel", "Coins 0", UDim2.new(0.5, -20, 0, 26), UDim2.new(0.5, 4, 0, 54), ObbyConfig.Colors.CheckpointAccent)
 	local statusLabel = createText(panel, "StatusLabel", "Touch GO to start", UDim2.new(1, -32, 0, 26), UDim2.fromOffset(16, 82), ObbyConfig.Colors.Start)
 
+	local levelPopup = Instance.new("Frame")
+	levelPopup.Name = "LevelPopup"
+	levelPopup.AnchorPoint = Vector2.new(0.5, 0)
+	levelPopup.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+	levelPopup.BackgroundTransparency = 0.08
+	levelPopup.BorderSizePixel = 0
+	levelPopup.Position = UDim2.new(0.5, 0, 0, 164)
+	levelPopup.Size = UDim2.fromOffset(390, 88)
+	levelPopup.Visible = false
+	levelPopup.Parent = screenGui
+
+	local levelCorner = Instance.new("UICorner")
+	levelCorner.CornerRadius = UDim.new(0, 12)
+	levelCorner.Parent = levelPopup
+
+	local levelStroke = Instance.new("UIStroke")
+	levelStroke.Color = ObbyConfig.Colors.Finish
+	levelStroke.Thickness = 2
+	levelStroke.Transparency = 0.15
+	levelStroke.Parent = levelPopup
+
+	local levelTitle = createText(levelPopup, "LevelTitle", "World 1", UDim2.new(1, -28, 0, 30), UDim2.fromOffset(14, 10), ObbyConfig.Colors.Finish)
+	local levelSubtitle = createText(levelPopup, "LevelSubtitle", "Stage 1: Lava Boulders", UDim2.new(1, -28, 0, 34), UDim2.fromOffset(14, 44), ObbyConfig.Colors.White)
+
 	local winPanel = Instance.new("Frame")
 	winPanel.Name = "WinPanel"
 	winPanel.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -89,6 +114,10 @@ local function createHud()
 		bestLabel = bestLabel,
 		coinsLabel = coinsLabel,
 		statusLabel = statusLabel,
+		levelPopup = levelPopup,
+		levelStroke = levelStroke,
+		levelTitle = levelTitle,
+		levelSubtitle = levelSubtitle,
 		winPanel = winPanel,
 		winTime = winTime,
 		winBest = winBest,
@@ -105,6 +134,8 @@ function TimerUi.start()
 	local bestTime = 0
 	local sessionCoins = 0
 	local statusToken = 0
+	local levelToken = 0
+	local currentWorldName = "World 1"
 
 	local function setBest(value)
 		bestTime = value or bestTime
@@ -136,6 +167,46 @@ function TimerUi.start()
 		end)
 	end
 
+	local function showLevelPopup(worldName, stageNumber, stageName)
+		levelToken = levelToken + 1
+		local token = levelToken
+
+		hud.levelTitle.Text = worldName or currentWorldName
+		if stageNumber and stageName then
+			hud.levelSubtitle.Text = string.format("Stage %d: %s", stageNumber, stageName)
+		elseif stageName then
+			hud.levelSubtitle.Text = stageName
+		else
+			hud.levelSubtitle.Text = "Stage"
+		end
+
+		hud.levelPopup.Visible = true
+		hud.levelPopup.BackgroundTransparency = 0.08
+		hud.levelStroke.Transparency = 0.15
+		hud.levelTitle.TextTransparency = 0
+		hud.levelTitle.TextStrokeTransparency = 0.45
+		hud.levelSubtitle.TextTransparency = 0
+		hud.levelSubtitle.TextStrokeTransparency = 0.45
+
+		task.delay(2.8, function()
+			if levelToken ~= token then
+				return
+			end
+
+			local tweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			TweenService:Create(hud.levelPopup, tweenInfo, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(hud.levelStroke, tweenInfo, { Transparency = 1 }):Play()
+			TweenService:Create(hud.levelTitle, tweenInfo, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+			TweenService:Create(hud.levelSubtitle, tweenInfo, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+
+			task.delay(0.4, function()
+				if levelToken == token then
+					hud.levelPopup.Visible = false
+				end
+			end)
+		end)
+	end
+
 	RunService.RenderStepped:Connect(function()
 		if running then
 			local elapsed = workspace:GetServerTimeNow() - startTime
@@ -144,7 +215,10 @@ function TimerUi.start()
 	end)
 
 	remote.OnClientEvent:Connect(function(payload)
-		if payload.type == "RunStarted" then
+		if payload.type == "WorldStarted" then
+			currentWorldName = payload.worldName or currentWorldName
+			showLevelPopup(currentWorldName, payload.stageNumber, payload.stageName)
+		elseif payload.type == "RunStarted" then
 			running = true
 			startTime = payload.startTime
 			hud.timerLabel.Text = "Time 0.00s"
@@ -181,6 +255,7 @@ function TimerUi.start()
 		elseif payload.type == "StageStarted" then
 			if running then
 				flashStatus(string.format("Stage %d next", payload.stageNumber), ObbyConfig.Colors.Start, 1.5)
+				showLevelPopup(currentWorldName, payload.stageNumber, payload.stageName)
 			end
 		elseif payload.type == "PassiveUnlocked" then
 			if running then

@@ -100,33 +100,10 @@ local function createPart(parent, name, size, positionOrCFrame, color, material,
 	return part
 end
 
-local function createLabel(parent, text, offsetY, size)
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Label"
-	billboard.AlwaysOnTop = true
-	billboard.Size = size or UDim2.fromOffset(220, 64)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, offsetY or 4, 0)
-	billboard.Parent = parent
-
-	local label = Instance.new("TextLabel")
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.Size = UDim2.fromScale(1, 1)
-	label.Text = text
-	label.TextColor3 = COLORS.White
-	label.TextScaled = true
-	label.TextStrokeColor3 = COLORS.Dark
-	label.TextStrokeTransparency = 0.2
-	label.TextWrapped = true
-	label.Parent = billboard
-
-	return billboard
-end
-
-local function createSurfaceLabel(parent, text, textColor)
+local function createSurfaceLabel(parent, text, textColor, face)
 	local surfaceGui = Instance.new("SurfaceGui")
 	surfaceGui.Name = "SurfaceLabel"
-	surfaceGui.Face = Enum.NormalId.Top
+	surfaceGui.Face = face or Enum.NormalId.Top
 	surfaceGui.LightInfluence = 0
 	surfaceGui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 	surfaceGui.PixelsPerStud = 40
@@ -187,7 +164,6 @@ end
 
 local function createStartArea(parent)
 	local platform = createPart(parent, "World1Stage1StartPlatform", Vector3.new(30, 1, 22), Vector3.new(0, 2, 0), COLORS.Spawn, Enum.Material.Grass)
-	createLabel(platform, "WORLD 1\nSTAGE 1\nLAVA BOULDERS", 8, UDim2.fromOffset(320, 100))
 	createSurfaceLabel(platform, "START")
 
 	createPart(parent, "StartLeftRail", Vector3.new(1, 1.5, 20), Vector3.new(-14.5, 3, 0), COLORS.Dark, Enum.Material.SmoothPlastic)
@@ -211,7 +187,7 @@ local function createStartArea(parent)
 	local startPad = createPart(parent, "StartPad", Vector3.new(18, 0.3, 2.5), Vector3.new(0, 3.05, 8), COLORS.Start, Enum.Material.Neon, {
 		CanCollide = false,
 	})
-	createLabel(startPad, "GO!", 4)
+	createSurfaceLabel(startPad, "GO")
 
 	return startPad
 end
@@ -222,7 +198,6 @@ local function createLava(parent)
 	local lava = createPart(parent, "World1LavaField", LAVA_FIELD.size, LAVA_FIELD.position, COLORS.Lava, Enum.Material.Neon, {
 		CanCollide = false,
 	})
-	createLabel(lava, "LAVA", 7, UDim2.fromOffset(170, 50))
 	addHazardEffects(lava)
 	table.insert(hazards, lava)
 
@@ -281,7 +256,6 @@ end
 
 local function createCheckpoint(parent)
 	local platform = createPart(parent, "Stage1CheckpointPlatform", Vector3.new(26, 1, 18), Vector3.new(0, 6.4, 174), COLORS.CheckpointAccent, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 1 COMPLETE", COLORS.Dark)
 
 	local base = createPart(parent, "Stage1CheckpointBase", Vector3.new(18, 0.16, 10), Vector3.new(0, 7.02, 172), COLORS.CheckpointAccent, Enum.Material.Neon, {
 		CanCollide = false,
@@ -295,9 +269,6 @@ local function createCheckpoint(parent)
 	pad:SetAttribute("CheckpointIndex", 1)
 	pad:SetAttribute("StageId", STAGE_1_ID)
 	pad:SetAttribute("CompletesStage", true)
-
-	createLabel(pad, "CHECKPOINT\n+150 COINS", 5, UDim2.fromOffset(230, 72))
-	createSurfaceLabel(pad, "CHECKPOINT", COLORS.Dark)
 
 	return {
 		{
@@ -327,7 +298,8 @@ local function createStageTwoPlaceholder(parent)
 	local closedDoor = createPart(parent, "Stage2ComingNextDoor", Vector3.new(17, 8, 1), Vector3.new(0, 11, 203), COLORS.Start, Enum.Material.ForceField, {
 		Transparency = 0.2,
 	})
-	createLabel(closedDoor, "STAGE 2\nCOMING NEXT", 0, UDim2.fromOffset(280, 90))
+	createSurfaceLabel(closedDoor, "STAGE 2\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
+	createSurfaceLabel(closedDoor, "STAGE 2\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
 end
 
 local function createScenery(parent)
