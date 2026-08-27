@@ -9,6 +9,7 @@ local BasketballService = {}
 BasketballService.__index = BasketballService
 
 local SHOTS = BasketballConfig.ShotOrder
+local QUALITIES = BasketballConfig.ShotQualities
 
 local function getOrCreateRemoteEvent(name)
 	local remote = ReplicatedStorage:FindFirstChild(name)
@@ -40,14 +41,78 @@ local function isInsidePart(part, position)
 		and math.abs(localPosition.Z) <= halfSize.Z
 end
 
-local function calculateLaunchVelocity(startPosition, targetPosition, flightTime)
-	local gravity = Vector3.new(0, -workspace.Gravity, 0)
-	local displacement = targetPosition - startPosition
-	return (displacement - (0.5 * gravity * flightTime * flightTime)) / flightTime
+local function calculateMeterValue(elapsed, cycleDuration)
+	local progress = (elapsed % cycleDuration) / cycleDuration
+	return progress <= 0.5 and (progress * 2) or ((1 - progress) * 2)
+end
+
+local function calculateLaunchVelocity(startPosition, targetPosition, arcHeight)
+	local gravity = workspace.Gravity
+	local apexY = math.max(startPosition.Y, targetPosition.Y) + math.max(arcHeight or 18, 4)
+	local verticalVelocity = math.sqrt(2 * gravity * math.max(apexY - startPosition.Y, 1))
+	local timeUp = verticalVelocity / gravity
+	local timeDown = math.sqrt((2 * math.max(apexY - targetPosition.Y, 1)) / gravity)
+	local flightTime = math.max(timeUp + timeDown, 0.25)
+	local horizontalDisplacement = Vector3.new(targetPosition.X - startPosition.X, 0, targetPosition.Z - startPosition.Z)
+	local horizontalVelocity = horizontalDisplacement / flightTime
+
+	return Vector3.new(horizontalVelocity.X, verticalVelocity, horizontalVelocity.Z), flightTime
 end
 
 local function getShotConfig(shotIndex)
 	return SHOTS[shotIndex]
+end
+
+local function getCompletedShotIndices(progress)
+	local completedShotIndices = {}
+	for shotIndex = 1, #SHOTS do
+		if progress.completedShots[shotIndex] then
+			table.insert(completedShotIndices, shotIndex)
+		end
+	end
+
+	return completedShotIndices
+end
+
+local function getCompletedShotCount(progress)
+	local count = 0
+	for shotIndex = 1, #SHOTS do
+		if progress.completedShots[shotIndex] then
+			count += 1
+		end
+	end
+
+	return count
+end
+
+local function getShotQuality(shotConfig, releaseValue)
+	if releaseValue >= shotConfig.perfectMin and releaseValue <= shotConfig.perfectMax then
+		return QUALITIES.Perfect
+	elseif releaseValue >= shotConfig.greenMin and releaseValue <= shotConfig.greenMax then
+		return QUALITIES.Good
+	elseif releaseValue >= shotConfig.yellowMin and releaseValue <= shotConfig.yellowMax then
+		return QUALITIES.Close
+	elseif releaseValue < shotConfig.greenMin then
+		return QUALITIES.Early
+	end
+
+	return QUALITIES.Late
+end
+
+local function canQualityScore(quality)
+	return quality == QUALITIES.Perfect or quality == QUALITIES.Good
+end
+
+local function getMissMessage(quality)
+	if quality == QUALITIES.Close then
+		return "Rim out - try again"
+	elseif quality == QUALITIES.Early then
+		return "Too early - short"
+	elseif quality == QUALITIES.Late then
+		return "Too late - long"
+	end
+
+	return "MISS - try again"
 end
 
 function BasketballService.new(stage6Data, runState, obbyRemote)
@@ -118,6 +183,7 @@ end
 
 function BasketballService:endShot(player, reason)
 	self:_endActiveShot(player, reason or "Ended")
+	self:_clearBall(player)
 end
 
 function BasketballService:isStageComplete(player)
@@ -163,28 +229,50 @@ function BasketballService:_tryStartShot(player, stationIndex)
 		return
 	end
 
-	rootPart.AssemblyLinearVelocity = Vector3.zero
-	rootPart.AssemblyAngularVelocity = Vector3.zero
-	rootPart.CFrame = station.cframe
+	local originalWalkSpeed = humanoid.WalkSpeed
+	local originalJumpPower = humanoid.JumpPower
+	local originalJumpHeight = humanoid.JumpHeight
+	local originalUseJumpPower = humanoid.UseJumpPower
+	local originalAutoRotate = humanoid.AutoRotate
+
+	self:_lockShooter(rootPart, humanoid, station)
 
 	self._nextShotId += 1
 	local shotId = self._nextShotId
+	local heldBall = self:_createHeldBall(player, station)
 	self._activeShots[player] = {
 		shotId = shotId,
 		shotIndex = stationIndex,
 		startedAt = now,
+		chargeStartedAt = nil,
+		humanoid = humanoid,
+		rootPart = rootPart,
+		station = station,
+		heldBall = heldBall,
+		originalWalkSpeed = originalWalkSpeed,
+		originalJumpPower = originalJumpPower,
+		originalJumpHeight = originalJumpHeight,
+		originalUseJumpPower = originalUseJumpPower,
+		originalAutoRotate = originalAutoRotate,
 	}
 
 	self._remote:FireClient(player, {
 		type = BasketballConfig.Messages.ShotStarted,
 		shotId = shotId,
 		shotIndex = requiredShot.index,
+		nextShotIndex = progress.nextShotIndex,
+		completedShotIndices = getCompletedShotIndices(progress),
 		displayName = requiredShot.displayName,
-		progressText = string.format("%d / 3", requiredShot.index, #SHOTS),
+		progressText = string.format("%d / %d", getCompletedShotCount(progress), #SHOTS),
 		meterCycleDuration = requiredShot.meterCycleDuration,
 		releaseTimeout = requiredShot.releaseTimeout,
+		yellowMin = requiredShot.yellowMin,
 		greenMin = requiredShot.greenMin,
+		perfectMin = requiredShot.perfectMin,
+		perfectMax = requiredShot.perfectMax,
 		greenMax = requiredShot.greenMax,
+		yellowMax = requiredShot.yellowMax,
+		cameraCFrame = station.cameraCFrame,
 	})
 end
 
@@ -193,11 +281,27 @@ function BasketballService:_onClientCommand(player, payload)
 		return
 	end
 
-	if payload.action == BasketballConfig.Actions.ReleaseShot then
+	if payload.action == BasketballConfig.Actions.BeginCharge then
+		self:_beginCharge(player, payload)
+	elseif payload.action == BasketballConfig.Actions.ReleaseShot then
 		self:_releaseShot(player, payload)
 	elseif payload.action == BasketballConfig.Actions.CancelShot then
 		self:_endActiveShot(player, "Canceled")
 	end
+end
+
+function BasketballService:_beginCharge(player, payload)
+	local activeShot = self._activeShots[player]
+	if not activeShot or activeShot.shotId ~= payload.shotId or activeShot.chargeStartedAt then
+		return
+	end
+
+	if not self:_validateActiveShot(player, activeShot) then
+		self:_endActiveShot(player, "Invalid")
+		return
+	end
+
+	activeShot.chargeStartedAt = workspace:GetServerTimeNow()
 end
 
 function BasketballService:_releaseShot(player, payload)
@@ -207,65 +311,190 @@ function BasketballService:_releaseShot(player, payload)
 	end
 
 	local shotConfig = getShotConfig(activeShot.shotIndex)
-	local releaseValue = math.clamp(tonumber(payload.releaseValue) or -1, 0, 1)
-	local elapsed = workspace:GetServerTimeNow() - activeShot.startedAt
-	if elapsed < BasketballConfig.Scoring.MinReleaseElapsed or elapsed > shotConfig.releaseTimeout + 1 then
+	local now = workspace:GetServerTimeNow()
+	if not shotConfig or now - activeShot.startedAt > shotConfig.releaseTimeout + 1 then
+		self:_missShot(player, activeShot.shotIndex, "Shot timed out")
 		return
 	end
 
-	local rootPart, humanoid = getCharacterRootAndHumanoid(player)
-	local station = self._stationByIndex[activeShot.shotIndex]
-	if not rootPart or not humanoid or humanoid.Health <= 0 or not self:_canUseStage6(player) or not self:_isNearStation(rootPart.Position, station) then
+	if not self:_validateActiveShot(player, activeShot) then
 		self:_endActiveShot(player, "Invalid")
 		return
 	end
 
+	local chargeStartedAt = activeShot.chargeStartedAt or activeShot.startedAt
+	local heldDuration = math.max(now - chargeStartedAt, 0)
+	local releaseValue = heldDuration < BasketballConfig.Scoring.MinHoldDuration and 0 or calculateMeterValue(heldDuration, shotConfig.meterCycleDuration)
+	local quality = getShotQuality(shotConfig, releaseValue)
+	local canScore = canQualityScore(quality)
+	local ball, flightTime = self:_launchBall(player, activeShot, shotConfig, releaseValue, quality, canScore)
+
 	self._activeShots[player] = nil
-	local willScore = releaseValue >= shotConfig.greenMin and releaseValue <= shotConfig.greenMax
-	local ball = self:_launchBall(player, station, shotConfig, releaseValue, willScore)
+	activeShot.heldBall = nil
+	self:_restoreShooter(activeShot)
+
 	self._activeBalls[player] = {
 		ball = ball,
 		shotIndex = activeShot.shotIndex,
 		shotId = activeShot.shotId,
-		willScore = willScore,
-		expiresAt = workspace:GetServerTimeNow() + shotConfig.flightTime + BasketballConfig.Ball.ScoreCheckDurationPadding,
-		missed = false,
+		quality = quality,
+		releaseValue = releaseValue,
+		canScore = canScore,
+		previousPosition = ball.Position,
+		expiresAt = now + math.max(flightTime, shotConfig.flightTime or 0) + BasketballConfig.Ball.ScoreCheckDurationPadding,
 	}
+
+	self._remote:FireClient(player, {
+		type = BasketballConfig.Messages.ShotReleased,
+		shotIndex = activeShot.shotIndex,
+		shotId = activeShot.shotId,
+		quality = quality,
+		releaseValue = releaseValue,
+		progressText = string.format("%d / %d", getCompletedShotCount(self:_getProgress(player)), #SHOTS),
+	})
 end
 
-function BasketballService:_launchBall(player, station, shotConfig, releaseValue, willScore)
-	self:_clearBall(player)
+function BasketballService:_lockShooter(rootPart, humanoid, station)
+	rootPart.AssemblyLinearVelocity = Vector3.zero
+	rootPart.AssemblyAngularVelocity = Vector3.zero
+	rootPart.CFrame = station.cframe
 
+	humanoid.AutoRotate = false
+	humanoid.WalkSpeed = 0
+	humanoid.UseJumpPower = true
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+end
+
+function BasketballService:_restoreShooter(activeShot)
+	local humanoid = activeShot and activeShot.humanoid
+	local rootPart = activeShot and activeShot.rootPart
+
+	if rootPart and rootPart.Parent then
+		rootPart.AssemblyAngularVelocity = Vector3.zero
+	end
+
+	if humanoid and humanoid.Parent then
+		humanoid.AutoRotate = activeShot.originalAutoRotate
+		humanoid.WalkSpeed = activeShot.originalWalkSpeed
+		humanoid.UseJumpPower = activeShot.originalUseJumpPower
+		humanoid.JumpPower = activeShot.originalJumpPower
+		humanoid.JumpHeight = activeShot.originalJumpHeight
+	end
+end
+
+function BasketballService:_validateActiveShot(player, activeShot)
+	local rootPart, humanoid = getCharacterRootAndHumanoid(player)
+	if not rootPart or not humanoid or humanoid.Health <= 0 or not self:_canUseStage6(player) then
+		return false
+	end
+
+	return self:_isNearStation(rootPart.Position, activeShot.station)
+end
+
+function BasketballService:_createBasketball(player, ballName, position, anchored)
 	local ball = Instance.new("Part")
-	ball.Name = BasketballConfig.Ball.NamePrefix .. tostring(player.UserId)
+	ball.Name = ballName
 	ball.Shape = Enum.PartType.Ball
 	ball.Size = Vector3.new(BasketballConfig.Ball.Size, BasketballConfig.Ball.Size, BasketballConfig.Ball.Size)
 	ball.Color = Color3.fromRGB(226, 99, 36)
 	ball.Material = Enum.Material.SmoothPlastic
-	ball.CanCollide = false
+	ball.Anchored = anchored
+	ball.CanCollide = not anchored
 	ball.CanTouch = false
 	ball.TopSurface = Enum.SurfaceType.Smooth
 	ball.BottomSurface = Enum.SurfaceType.Smooth
-	ball.Position = station.shotStartPosition
+	ball.CustomPhysicalProperties = PhysicalProperties.new(0.8, 0.45, 0.72, 1, 1)
+	ball.Position = position
 	ball.Parent = self._stage6.ballsFolder
 
-	local center = (shotConfig.greenMin + shotConfig.greenMax) / 2
-	local missDirection = releaseValue < center and -1 or 1
-	local timingError = math.abs(releaseValue - center)
-	local targetPosition = self._stage6.shotTarget
-	if not willScore then
-		local missOffset = math.max(7, timingError * BasketballConfig.Ball.MissOffsetScale)
-		targetPosition += Vector3.new(missDirection * missOffset, timingError * 5, 0)
+	local attachment0 = Instance.new("Attachment")
+	attachment0.Name = "TrailStart"
+	attachment0.Position = Vector3.new(0, BasketballConfig.Ball.Size * 0.45, 0)
+	attachment0.Parent = ball
+
+	local attachment1 = Instance.new("Attachment")
+	attachment1.Name = "TrailEnd"
+	attachment1.Position = Vector3.new(0, -BasketballConfig.Ball.Size * 0.45, 0)
+	attachment1.Parent = ball
+
+	local trail = Instance.new("Trail")
+	trail.Name = "ShotTrail"
+	trail.Attachment0 = attachment0
+	trail.Attachment1 = attachment1
+	trail.Color = ColorSequence.new(Color3.fromRGB(255, 190, 74), Color3.fromRGB(255, 91, 38))
+	trail.Lifetime = 0.28
+	trail.MinLength = 0.1
+	trail.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.15),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	trail.Enabled = false
+	trail.Parent = ball
+
+	return ball
+end
+
+function BasketballService:_createHeldBall(player, station)
+	return self:_createBasketball(player, BasketballConfig.Ball.NamePrefix .. tostring(player.UserId) .. "_Held", station.shotStartPosition, true)
+end
+
+function BasketballService:_launchBall(player, activeShot, shotConfig, releaseValue, quality, canScore)
+	self:_clearBall(player)
+
+	local rootPart = activeShot.rootPart
+	local ball = activeShot.heldBall
+	if not ball or not ball.Parent then
+		ball = self:_createBasketball(player, BasketballConfig.Ball.NamePrefix .. tostring(player.UserId) .. "_" .. tostring(activeShot.shotId), activeShot.station.shotStartPosition, false)
 	end
 
-	ball.AssemblyLinearVelocity = calculateLaunchVelocity(ball.Position, targetPosition, shotConfig.flightTime)
+	if rootPart and rootPart.Parent then
+		ball.Position = (rootPart.CFrame * CFrame.new(0, BasketballConfig.Ball.HoldHeight, -BasketballConfig.Ball.HoldForwardOffset)).Position
+	end
+
+	ball.Name = BasketballConfig.Ball.NamePrefix .. tostring(player.UserId) .. "_" .. tostring(activeShot.shotId)
+	ball.Anchored = false
+	ball.CanCollide = true
+	ball.CanTouch = false
+
+	local targetPosition = self:_getShotTarget(shotConfig, releaseValue, quality, canScore)
+	local velocity, flightTime = calculateLaunchVelocity(ball.Position, targetPosition, shotConfig.arcHeight)
+	ball.AssemblyLinearVelocity = velocity
+	ball.AssemblyAngularVelocity = Vector3.new(-10, 3, 0)
+
+	local trail = ball:FindFirstChild("ShotTrail")
+	if trail then
+		trail.Enabled = true
+	end
 
 	pcall(function()
 		ball:SetNetworkOwner(nil)
 	end)
 
 	Debris:AddItem(ball, BasketballConfig.Ball.Lifetime)
-	return ball
+	return ball, flightTime
+end
+
+function BasketballService:_getShotTarget(shotConfig, releaseValue, quality, canScore)
+	local center = (shotConfig.perfectMin + shotConfig.perfectMax) / 2
+	local timingDelta = releaseValue - center
+	local sideOffset = timingDelta * BasketballConfig.Ball.SideErrorScale
+
+	if quality == QUALITIES.Perfect then
+		return self._stage6.shotTarget
+	elseif canScore then
+		return self._stage6.shotTarget + Vector3.new(sideOffset * 0.22, 0, 0)
+	elseif quality == QUALITIES.Close and timingDelta < 0 then
+		return self._stage6.hoopCenter + Vector3.new(sideOffset * 0.55, 0.25, 3.8)
+	elseif quality == QUALITIES.Close then
+		return self._stage6.hoopCenter + Vector3.new(sideOffset * 0.55, 1.2, -3.8)
+	elseif timingDelta < 0 then
+		local shortAmount = 7 + (math.abs(timingDelta) * BasketballConfig.Ball.EarlyShortScale)
+		return self._stage6.hoopCenter + Vector3.new(sideOffset, -2.6, shortAmount)
+	end
+
+	local longAmount = 7 + (math.abs(timingDelta) * BasketballConfig.Ball.LateLongScale)
+	return self._stage6.hoopCenter + Vector3.new(sideOffset, 3.2, -longAmount)
 end
 
 function BasketballService:_update()
@@ -276,11 +505,13 @@ function BasketballService:_update()
 
 	for player, activeShot in pairs(self._activeShots) do
 		local shotConfig = getShotConfig(activeShot.shotIndex)
-		if not self:_canUseStage6(player) or now - activeShot.startedAt > shotConfig.releaseTimeout then
+		if not shotConfig or not self:_canUseStage6(player) or now - activeShot.startedAt > shotConfig.releaseTimeout then
 			table.insert(timedOutShots, {
 				player = player,
 				shotIndex = activeShot.shotIndex,
 			})
+		elseif activeShot.heldBall and activeShot.heldBall.Parent and activeShot.rootPart and activeShot.rootPart.Parent then
+			activeShot.heldBall.Position = (activeShot.rootPart.CFrame * CFrame.new(0, BasketballConfig.Ball.HoldHeight, -BasketballConfig.Ball.HoldForwardOffset)).Position
 		end
 	end
 
@@ -291,16 +522,22 @@ function BasketballService:_update()
 				player = player,
 				shotIndex = ballState.shotIndex,
 			})
-		elseif ballState.willScore and isInsidePart(self._stage6.scoringZone, ball.Position) then
-			table.insert(scoredBalls, {
-				player = player,
-				shotIndex = ballState.shotIndex,
-			})
-		elseif now >= ballState.expiresAt then
-			table.insert(missedBalls, {
-				player = player,
-				shotIndex = ballState.shotIndex,
-			})
+		else
+			local position = ball.Position
+			local movingDown = ballState.previousPosition and position.Y < ballState.previousPosition.Y
+			if ballState.canScore and movingDown and isInsidePart(self._stage6.scoringZone, position) then
+				table.insert(scoredBalls, {
+					player = player,
+					shotIndex = ballState.shotIndex,
+				})
+			elseif now >= ballState.expiresAt then
+				table.insert(missedBalls, {
+					player = player,
+					shotIndex = ballState.shotIndex,
+				})
+			else
+				ballState.previousPosition = position
+			end
 		end
 	end
 
@@ -320,7 +557,9 @@ end
 function BasketballService:_scoreShot(player, shotIndex)
 	local ballState = self._activeBalls[player]
 	self._activeBalls[player] = nil
-	self:_destroyBallState(ballState)
+	if ballState and ballState.ball and ballState.ball.Parent then
+		Debris:AddItem(ballState.ball, 1.2)
+	end
 
 	local progress = self:_getProgress(player)
 	progress.completedShots[shotIndex] = true
@@ -329,13 +568,19 @@ function BasketballService:_scoreShot(player, shotIndex)
 	local shotConfig = getShotConfig(shotIndex)
 	local nextShotIndex = shotIndex + 1
 	progress.nextShotIndex = nextShotIndex
+	local quality = ballState and ballState.quality
+	local message = quality == QUALITIES.Perfect and ("PERFECT! SWISH! " .. shotConfig.displayName .. " Complete") or ("SWISH! " .. shotConfig.displayName .. " Complete")
 
 	self._remote:FireClient(player, {
 		type = BasketballConfig.Messages.ShotScored,
 		shotIndex = shotIndex,
 		displayName = shotConfig.displayName,
-		message = "SWISH! " .. shotConfig.displayName .. " Complete",
-		progressText = string.format("%d / 3", math.min(shotIndex, #SHOTS), #SHOTS),
+		quality = quality,
+		releaseValue = ballState and ballState.releaseValue,
+		message = message,
+		progressText = string.format("%d / %d", getCompletedShotCount(progress), #SHOTS),
+		nextShotIndex = nextShotIndex,
+		completedShotIndices = getCompletedShotIndices(progress),
 	})
 
 	if nextShotIndex > #SHOTS then
@@ -345,6 +590,8 @@ function BasketballService:_scoreShot(player, shotIndex)
 			type = BasketballConfig.Messages.Completed,
 			message = "All shots made! CP 6 unlocked",
 			doorVisual = self._stage6.doorVisual,
+			nextShotIndex = progress.nextShotIndex,
+			completedShotIndices = getCompletedShotIndices(progress),
 		})
 		self:_notifyPlayer(player, "CP 6 unlocked")
 	else
@@ -352,8 +599,10 @@ function BasketballService:_scoreShot(player, shotIndex)
 		self._remote:FireClient(player, {
 			type = BasketballConfig.Messages.ProgressChanged,
 			shotIndex = nextShot.index,
+			nextShotIndex = nextShot.index,
 			displayName = nextShot.displayName,
-			progressText = string.format("%d / 3", nextShot.index, #SHOTS),
+			progressText = string.format("%d / %d", getCompletedShotCount(progress), #SHOTS),
+			completedShotIndices = getCompletedShotIndices(progress),
 		})
 	end
 end
@@ -362,24 +611,31 @@ function BasketballService:_missShot(player, shotIndex, message)
 	local activeShot = self._activeShots[player]
 	if activeShot and activeShot.shotIndex == shotIndex then
 		self._activeShots[player] = nil
+		self:_restoreShooter(activeShot)
+		self:_destroyBall(activeShot.heldBall)
 	end
 
 	local ballState = self._activeBalls[player]
 	if ballState and ballState.shotIndex == shotIndex then
 		self._activeBalls[player] = nil
-		self:_destroyBallState(ballState)
+		self:_destroyBall(ballState.ball)
 	end
 
 	local progress = self:_getProgress(player)
 	progress.cooldownUntil = workspace:GetServerTimeNow() + BasketballConfig.Ball.ShotCooldown
 
 	local shotConfig = getShotConfig(shotIndex)
+	local quality = ballState and ballState.quality
 	self._remote:FireClient(player, {
 		type = BasketballConfig.Messages.ShotMissed,
 		shotIndex = shotIndex,
 		displayName = shotConfig and shotConfig.displayName,
-		message = message or "MISS - try again",
-		progressText = string.format("%d / 3", math.min(progress.nextShotIndex, #SHOTS), #SHOTS),
+		quality = quality,
+		releaseValue = ballState and ballState.releaseValue,
+		message = message or getMissMessage(quality),
+		progressText = string.format("%d / %d", getCompletedShotCount(progress), #SHOTS),
+		nextShotIndex = progress.nextShotIndex,
+		completedShotIndices = getCompletedShotIndices(progress),
 	})
 end
 
@@ -390,6 +646,8 @@ function BasketballService:_endActiveShot(player, reason)
 	end
 
 	self._activeShots[player] = nil
+	self:_restoreShooter(activeShot)
+	self:_destroyBall(activeShot.heldBall)
 	self._remote:FireClient(player, {
 		type = BasketballConfig.Messages.ShotEnded,
 		reason = reason or "Ended",
@@ -399,11 +657,12 @@ end
 function BasketballService:_clearBall(player)
 	local ballState = self._activeBalls[player]
 	self._activeBalls[player] = nil
-	self:_destroyBallState(ballState)
+	if ballState then
+		self:_destroyBall(ballState.ball)
+	end
 end
 
-function BasketballService:_destroyBallState(ballState)
-	local ball = ballState and ballState.ball
+function BasketballService:_destroyBall(ball)
 	if ball and ball.Parent then
 		ball:Destroy()
 	end

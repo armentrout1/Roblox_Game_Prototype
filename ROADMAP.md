@@ -14,6 +14,7 @@
 - The second progressive buff, Speed Boost, unlocks after Stage 4 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 5 - Tsunami Run is implemented with server-owned wave timing, explicit safe shelters, and CP 5 progression.
 - World 1 Stage 6 - Basketball Challenge is implemented with free throw, three-pointer, and half-court shot stations, a client shot meter, server-owned scoring, CP 6 progression, and a Stage 7 placeholder gate.
+- Stage 6 basketball polish pass is complete: elevated court arena, clearer court markings, hold/release shooting, timing-quality feedback, improved shot arcs, rim/backboard interaction, and a subtle shooting camera.
 - The third progressive buff, Agility Boost, unlocks after Stage 6 through the existing `BuffService` and `WorldConfig` flow.
 - Developer-only Studio testing UI is implemented for jumping to Stage 1, Stage 2, Stage 3, Stage 4, Stage 5, or Stage 6, resetting a run, and returning to the start without beginning Stage 7 work.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
@@ -91,6 +92,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 4 RC tuning pass added robust client car readiness binding, Chase/Aerial camera modes, and a more forgiving maze layout.
 - Complete: Stage 5 tsunami service keeps wave lifecycle and safe-zone validation server-authoritative while the client handles warning UI.
 - Complete: Stage 6 basketball service keeps shot order, timing validation, ball scoring, gate access, and CP 6 completion server-authoritative while the client handles meter UI and feedback.
+- Complete: Stage 6 polish pass centralizes basketball tuning in `BasketballConfig` and improves court visuals, shooting presentation, shot quality, and camera cleanup without starting Stage 7.
 - Continue to keep all gameplay authority on the server.
 
 ## World 1 - First Content Pass
@@ -104,6 +106,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Speed Boost unlock after Stage 4.
 - Complete: Stage 5 - Tsunami Run with explicit safe shelters and CP 5 checkpoint reward.
 - Complete: Stage 6 - Basketball Challenge with three required shots, visible ball arcs, CP 6 checkpoint reward, and Agility Boost unlock.
+- Complete: Stage 6 basketball polish pass.
 - The Stage 1-6 content pass is now complete; confirm checkpoint, reward, buff, respawn, and timer behavior through these first six stages before adding more content.
 
 ## World 1 - Interactive Stages
@@ -112,6 +115,7 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 4 tuning pass for RC camera startup, camera mode toggle, and easier maze navigation.
 - Complete: Stage 5 - Tsunami Run with shared wave cycle and per-player survival checks.
 - Complete: Stage 6 - Basketball Challenge with a server-validated shot meter sequence.
+- Complete: Stage 6 basketball polish pass with elevated court presentation and hold/release timing.
 - Not started: Stage 7 - Cat and Mouse.
 - Keep each mini-game behind a server-owned completion signal.
 
