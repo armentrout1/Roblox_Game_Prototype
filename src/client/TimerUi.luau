@@ -1,0 +1,142 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
+
+local TimerUi = {}
+
+local player = Players.LocalPlayer
+
+local function createText(parent, name, text, size, position, color, font)
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.BackgroundTransparency = 1
+	label.Font = font or Enum.Font.GothamBold
+	label.Position = position
+	label.Size = size
+	label.Text = text
+	label.TextColor3 = color or Color3.new(1, 1, 1)
+	label.TextScaled = true
+	label.TextStrokeColor3 = ObbyConfig.Colors.Dark
+	label.TextStrokeTransparency = 0.45
+	label.Parent = parent
+
+	return label
+end
+
+local function createHud()
+	local playerGui = player:WaitForChild("PlayerGui")
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "ObbyHud"
+	screenGui.IgnoreGuiInset = true
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = playerGui
+
+	local panel = Instance.new("Frame")
+	panel.Name = "TimerPanel"
+	panel.AnchorPoint = Vector2.new(0.5, 0)
+	panel.BackgroundColor3 = ObbyConfig.Colors.Dark
+	panel.BackgroundTransparency = 0.14
+	panel.BorderSizePixel = 0
+	panel.Position = UDim2.fromScale(0.5, 0.035)
+	panel.Size = UDim2.fromOffset(380, 92)
+	panel.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = panel
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = ObbyConfig.Colors.Start
+	stroke.Thickness = 2
+	stroke.Transparency = 0.15
+	stroke.Parent = panel
+
+	local timerLabel = createText(panel, "TimerLabel", "Time 0.00s", UDim2.new(1, -24, 0, 42), UDim2.fromOffset(12, 8), ObbyConfig.Colors.White)
+	local bestLabel = createText(panel, "BestLabel", "Best --", UDim2.new(0.5, -18, 0, 28), UDim2.fromOffset(16, 55), ObbyConfig.Colors.Finish)
+	local statusLabel = createText(panel, "StatusLabel", "Touch GO to start", UDim2.new(0.5, -18, 0, 28), UDim2.new(0.5, 2, 0, 55), ObbyConfig.Colors.Start)
+
+	local winPanel = Instance.new("Frame")
+	winPanel.Name = "WinPanel"
+	winPanel.AnchorPoint = Vector2.new(0.5, 0.5)
+	winPanel.BackgroundColor3 = Color3.fromRGB(18, 22, 30)
+	winPanel.BackgroundTransparency = 0.08
+	winPanel.BorderSizePixel = 0
+	winPanel.Position = UDim2.fromScale(0.5, 0.45)
+	winPanel.Size = UDim2.fromOffset(430, 210)
+	winPanel.Visible = false
+	winPanel.Parent = screenGui
+
+	local winCorner = Instance.new("UICorner")
+	winCorner.CornerRadius = UDim.new(0, 14)
+	winCorner.Parent = winPanel
+
+	local winStroke = Instance.new("UIStroke")
+	winStroke.Color = ObbyConfig.Colors.Finish
+	winStroke.Thickness = 3
+	winStroke.Parent = winPanel
+
+	createText(winPanel, "WinTitle", "You Win!", UDim2.new(1, -32, 0, 64), UDim2.fromOffset(16, 18), ObbyConfig.Colors.Finish)
+	local winTime = createText(winPanel, "WinTime", "Time 0.00s", UDim2.new(1, -32, 0, 46), UDim2.fromOffset(16, 88), ObbyConfig.Colors.White)
+	local winBest = createText(winPanel, "WinBest", "Best --", UDim2.new(1, -32, 0, 38), UDim2.fromOffset(16, 140), ObbyConfig.Colors.Start)
+
+	return {
+		timerLabel = timerLabel,
+		bestLabel = bestLabel,
+		statusLabel = statusLabel,
+		winPanel = winPanel,
+		winTime = winTime,
+		winBest = winBest,
+	}
+end
+
+function TimerUi.start()
+	local remote = ReplicatedStorage:WaitForChild(ObbyConfig.RemoteEventName)
+	local hud = createHud()
+
+	local running = false
+	local startTime = 0
+	local bestTime = 0
+
+	local function setBest(value)
+		bestTime = value or bestTime
+		hud.bestLabel.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
+	end
+
+	RunService.RenderStepped:Connect(function()
+		if running then
+			local elapsed = workspace:GetServerTimeNow() - startTime
+			hud.timerLabel.Text = "Time " .. ObbyConfig.formatTime(elapsed)
+		end
+	end)
+
+	remote.OnClientEvent:Connect(function(payload)
+		if payload.type == "RunStarted" then
+			running = true
+			startTime = payload.startTime
+			hud.timerLabel.Text = "Time 0.00s"
+			hud.statusLabel.Text = "Run!"
+			hud.winPanel.Visible = false
+			setBest(payload.bestTime)
+		elseif payload.type == "RunFinished" then
+			running = false
+			setBest(payload.bestTime)
+
+			local elapsedText = ObbyConfig.formatTime(payload.elapsed)
+			hud.timerLabel.Text = "Time " .. elapsedText
+			hud.statusLabel.Text = payload.isBest and "New best!" or "Finished"
+			hud.winTime.Text = "Time " .. elapsedText
+			hud.winBest.Text = "Best " .. ObbyConfig.formatBestTime(bestTime)
+			hud.winPanel.Visible = true
+		elseif payload.type == "RunCancelled" then
+			running = false
+			hud.timerLabel.Text = "Time 0.00s"
+			hud.statusLabel.Text = "Try again"
+			hud.winPanel.Visible = false
+		end
+	end)
+end
+
+return TimerUi
