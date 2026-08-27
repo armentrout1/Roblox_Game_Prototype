@@ -59,6 +59,11 @@ local STAGE_1_ROCK_TEMPLATE_NAMES = {
 	"stage1rocktemplate",
 }
 
+local STAGE_2_NOOB_TEMPLATE_NAMES = {
+	"Stage2NoobTemplate",
+	"stage2noobtemplate",
+}
+
 local NOOB_COLORS = {
 	Yellow = Color3.fromRGB(255, 220, 64),
 	SeaYellow = Color3.fromRGB(255, 207, 48),
@@ -226,6 +231,8 @@ local function createNoobFace(parent, name, position, size)
 	})
 end
 
+local createTemplateNoob
+
 local function createNoobHeadObstacle(parent, index, obstacle)
 	local head = createPart(parent, obstacle.name, obstacle.size, obstacle.position, NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
@@ -321,7 +328,22 @@ local function createNoobStackObstacle(parent, index, obstacle)
 	end
 end
 
-local function createNoobSeaVisualPiece(parent, row, column)
+local function createTemplateSafeNoob(parent, template, index, obstacle)
+	local yaw = math.rad(obstacle.yaw or (((index * 23) % 50) - 25))
+	local roll = math.rad(obstacle.kind == "limb" and 86 or 0)
+	local pitch = math.rad(obstacle.kind == "hand" and -8 or 0)
+	local noobCFrame = CFrame.new(obstacle.position) * CFrame.Angles(pitch, yaw, roll)
+
+	createTemplateNoob(parent, template, obstacle.name, obstacle.size, noobCFrame)
+	createInvisibleLanding(parent, obstacle.name .. "Landing", obstacle.position, obstacle.size, obstacle.landingRatio or 0.82)
+
+	if index == 1 or index == 3 or index == 6 or index == 8 or index == 10 or index == 11 then
+		local topY = obstacle.position.Y + (obstacle.size.Y / 2)
+		createPathArrow(parent, Vector3.new(obstacle.position.X, topY + 0.24, obstacle.position.Z + 0.2), COLORS.Start)
+	end
+end
+
+local function createNoobSeaVisualPiece(parent, row, column, template)
 	local centerColumn = (STAGE_2_NOOB_SEA.columns + 1) / 2
 	local x = (column - centerColumn) * STAGE_2_NOOB_SEA.xSpacing
 	local z = STAGE_2_NOOB_SEA.startZ + ((row - 1) * STAGE_2_NOOB_SEA.zSpacing)
@@ -329,6 +351,14 @@ local function createNoobSeaVisualPiece(parent, row, column)
 	local variant = (row * 5 + column * 3) % 5
 	local yaw = math.rad(((row * 17 + column * 29) % 50) - 25)
 	local position = Vector3.new(x + offset, 2.25 + ((row + column) % 3) * 0.12, z)
+
+	if template then
+		local roll = math.rad(((row + column) % 2 == 0) and 88 or -88)
+		local pitch = math.rad(((row * 7 + column * 11) % 28) - 14)
+		local targetSize = Vector3.new(7.2 + variant * 0.35, 5.8, 7.2 + variant * 0.35)
+		createTemplateNoob(parent, template, string.format("NoobSeaTemplate%02d%02d", row, column), targetSize, CFrame.new(position) * CFrame.Angles(pitch, yaw, roll))
+		return
+	end
 
 	if variant == 0 then
 		createPart(parent, string.format("NoobSeaHead%02d%02d", row, column), Vector3.new(7.5, 2.9, 7.5), position, NOOB_COLORS.SeaYellow, Enum.Material.SmoothPlastic, {
@@ -364,7 +394,7 @@ local function createNoobSeaVisualPiece(parent, row, column)
 	end
 end
 
-local function createStageTwoNoobSea(parent)
+local function createStageTwoNoobSea(parent, template)
 	local seaFolder = Instance.new("Folder")
 	seaFolder.Name = "Stage2NoobSeaVisuals"
 	seaFolder.Parent = parent
@@ -377,7 +407,7 @@ local function createStageTwoNoobSea(parent)
 
 	for row = 1, STAGE_2_NOOB_SEA.rows do
 		for column = 1, STAGE_2_NOOB_SEA.columns do
-			createNoobSeaVisualPiece(seaFolder, row, column)
+			createNoobSeaVisualPiece(seaFolder, row, column, template)
 		end
 	end
 
@@ -523,6 +553,57 @@ local function hideRockTemplate(template)
 	end
 end
 
+local function findStageTwoNoobTemplate()
+	for _, name in ipairs(STAGE_2_NOOB_TEMPLATE_NAMES) do
+		local template = workspace:FindFirstChild(name)
+		if template and template:IsA("Model") then
+			return template
+		end
+	end
+
+	return nil
+end
+
+local function prepareNoobClone(clone)
+	for _, descendant in ipairs(clone:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+end
+
+local function scaleNoobClone(clone, targetSize)
+	local sourceSize = getModelSize(clone)
+	local sourceAxis = math.max(sourceSize.X, sourceSize.Y, sourceSize.Z, 0.01)
+	local targetAxis = math.max(targetSize.X, targetSize.Y, targetSize.Z)
+	local scale = math.max(targetAxis / sourceAxis, 0.01)
+
+	clone:ScaleTo(scale)
+end
+
+local function hideNoobTemplate(template)
+	for _, descendant in ipairs(template:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 1
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+end
+
+createTemplateNoob = function(parent, template, name, targetSize, targetCFrame)
+	local clone = template:Clone()
+	clone.Name = name
+	clone.Parent = parent
+	prepareNoobClone(clone)
+	scaleNoobClone(clone, targetSize)
+	clone:PivotTo(targetCFrame)
+
+	return clone
+end
+
 local function createTemplateBoulder(parent, template, index, visualSize, boulderCFrame)
 	local clone = template:Clone()
 	clone.Name = string.format("Stage1Boulder%02d", index)
@@ -622,9 +703,11 @@ local function createStageTwoEntrance(parent)
 	return platform
 end
 
-local function createStageTwoObstacles(parent)
+local function createStageTwoObstacles(parent, template)
 	for index, obstacle in ipairs(STAGE_2_SAFE_NOOBS) do
-		if obstacle.kind == "head" then
+		if template then
+			createTemplateSafeNoob(parent, template, index, obstacle)
+		elseif obstacle.kind == "head" then
 			createNoobHeadObstacle(parent, index, obstacle)
 		elseif obstacle.kind == "torso" then
 			createNoobTorsoObstacle(parent, obstacle)
@@ -700,8 +783,12 @@ function CourseBuilder.build()
 	createScenery(courseFolder)
 	local checkpoints = createStageOneCheckpoint(courseFolder)
 	createStageTwoEntrance(courseFolder)
-	table.insert(hazards, createStageTwoNoobSea(courseFolder))
-	createStageTwoObstacles(courseFolder)
+	local stageTwoNoobTemplate = findStageTwoNoobTemplate()
+	if stageTwoNoobTemplate then
+		hideNoobTemplate(stageTwoNoobTemplate)
+	end
+	table.insert(hazards, createStageTwoNoobSea(courseFolder, stageTwoNoobTemplate))
+	createStageTwoObstacles(courseFolder, stageTwoNoobTemplate)
 	table.insert(checkpoints, createStageTwoCheckpoint(courseFolder))
 	local stage3Data = Stage3WallRunBuilder.build(courseFolder)
 	table.insert(checkpoints, stage3Data.checkpoint)

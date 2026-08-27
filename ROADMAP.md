@@ -6,7 +6,7 @@
 - Checkpoints and respawn are implemented, with Studio verification still pending.
 - Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
 - World 1 Stage 1 - Lava Boulders is implemented as the first real content pass, with support for a Studio-provided `Stage1RockTemplate` asset while preserving forgiving hidden landing pads.
-- World 1 Stage 2 - Sea of Noobs is implemented: the low Sea of Noobs is hazardous, while elevated noobs are safe traversal platforms.
+- World 1 Stage 2 - Sea of Noobs is implemented: the low Sea of Noobs is hazardous, while elevated noobs are safe traversal platforms, with support for a Studio-provided `Stage2NoobTemplate` asset.
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
 - World 1 Stage 4 - RC Car Maze is implemented as a distinct remote-control mini-game with server-owned completion and CP 4 progression.
@@ -101,7 +101,7 @@ The game should evolve from a single generated prototype into reusable systems:
 ## World 1 - First Content Pass
 
 - Complete: Stage 1 - Lava Boulders, including support for cloning a Studio-provided `Stage1RockTemplate` onto the original boulder path while keeping the hidden landing helpers.
-- Complete: Stage 2 - Sea of Noobs, with low hazardous noob sea visuals and elevated safe noob traversal.
+- Complete: Stage 2 - Sea of Noobs, with low hazardous noob sea visuals, elevated safe noob traversal, and support for cloning a Studio-provided `Stage2NoobTemplate` asset while keeping forgiving hidden landing pads.
 - Complete: first progressive buff unlock after Stage 2.
 - Complete: Stage 3 - Ninja Wall Run.
 - Complete: developer tooling to jump directly into Stage 1, Stage 2, Stage 3, or Stage 4 test states without awarding skipped checkpoint coins.
