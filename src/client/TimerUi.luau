@@ -26,6 +26,27 @@ local function createText(parent, name, text, size, position, color, font)
 	return label
 end
 
+local function createButton(parent, name, text, size, position)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.AutoButtonColor = true
+	button.BackgroundColor3 = Color3.fromRGB(45, 55, 72)
+	button.BorderSizePixel = 0
+	button.Font = Enum.Font.GothamBold
+	button.Position = position
+	button.Size = size
+	button.Text = text
+	button.TextColor3 = ObbyConfig.Colors.White
+	button.TextSize = 13
+	button.Parent = parent
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = button
+
+	return button
+end
+
 local function createHud()
 	local playerGui = player:WaitForChild("PlayerGui")
 
@@ -55,7 +76,8 @@ local function createHud()
 	stroke.Transparency = 0.15
 	stroke.Parent = panel
 
-	local timerLabel = createText(panel, "TimerLabel", "Time 0.00s", UDim2.new(1, -24, 0, 42), UDim2.fromOffset(12, 8), ObbyConfig.Colors.White)
+	local timerLabel = createText(panel, "TimerLabel", "Time 0.00s", UDim2.new(1, -126, 0, 42), UDim2.fromOffset(12, 8), ObbyConfig.Colors.White)
+	local timerToggleButton = createButton(panel, "TimerToggleButton", "Timer: ON", UDim2.fromOffset(92, 28), UDim2.new(1, -108, 0, 15))
 	local bestLabel = createText(panel, "BestLabel", "Best --", UDim2.new(0.5, -20, 0, 26), UDim2.fromOffset(16, 54), ObbyConfig.Colors.Finish)
 	local coinsLabel = createText(panel, "CoinsLabel", "Coins 0", UDim2.new(0.5, -20, 0, 26), UDim2.new(0.5, 4, 0, 54), ObbyConfig.Colors.CheckpointAccent)
 	local statusLabel = createText(panel, "StatusLabel", "Touch GO to start", UDim2.new(1, -32, 0, 26), UDim2.fromOffset(16, 82), ObbyConfig.Colors.Start)
@@ -122,6 +144,7 @@ local function createHud()
 		winTime = winTime,
 		winBest = winBest,
 		winCoins = winCoins,
+		timerToggleButton = timerToggleButton,
 	}
 end
 
@@ -136,6 +159,22 @@ function TimerUi.start()
 	local statusToken = 0
 	local levelToken = 0
 	local currentWorldName = "World 1"
+	local timerVisible = true
+
+	local function updateTimerLabel()
+		local elapsed = running and (workspace:GetServerTimeNow() - startTime) or 0
+		hud.timerLabel.Text = "Time " .. ObbyConfig.formatTime(elapsed)
+	end
+
+	local function applyTimerVisibility()
+		hud.timerLabel.Visible = timerVisible
+		hud.timerToggleButton.Text = timerVisible and "Timer: ON" or "Timer: OFF"
+		hud.timerToggleButton.BackgroundColor3 = timerVisible and Color3.fromRGB(45, 55, 72) or Color3.fromRGB(86, 58, 68)
+
+		if timerVisible then
+			updateTimerLabel()
+		end
+	end
 
 	local function setBest(value)
 		bestTime = value or bestTime
@@ -207,10 +246,14 @@ function TimerUi.start()
 		end)
 	end
 
+	hud.timerToggleButton.Activated:Connect(function()
+		timerVisible = not timerVisible
+		applyTimerVisibility()
+	end)
+
 	RunService.RenderStepped:Connect(function()
 		if running then
-			local elapsed = workspace:GetServerTimeNow() - startTime
-			hud.timerLabel.Text = "Time " .. ObbyConfig.formatTime(elapsed)
+			updateTimerLabel()
 		end
 	end)
 
@@ -221,7 +264,7 @@ function TimerUi.start()
 		elseif payload.type == "RunStarted" then
 			running = true
 			startTime = payload.startTime
-			hud.timerLabel.Text = "Time 0.00s"
+			updateTimerLabel()
 			setStatus("Run!", ObbyConfig.Colors.Start)
 			hud.winPanel.Visible = false
 			setBest(payload.bestTime)
@@ -251,7 +294,7 @@ function TimerUi.start()
 		elseif payload.type == "RunReset" then
 			running = false
 			startTime = 0
-			hud.timerLabel.Text = "Time 0.00s"
+			updateTimerLabel()
 			hud.winPanel.Visible = false
 			setBest(payload.bestTime)
 			setCoins(payload.sessionCoins)

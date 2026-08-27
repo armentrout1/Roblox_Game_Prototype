@@ -6,7 +6,7 @@
 - Checkpoints and respawn are implemented, with Studio verification still pending.
 - Foundation architecture pass is implemented: server-owned run state, stage progression, checkpoint rewards, coin session state, passive buff plumbing, and stage-module documentation.
 - World 1 Stage 1 - Lava Boulders is implemented as the first real content pass.
-- World 1 Stage 2 - Yellow Noobs is implemented.
+- World 1 Stage 2 - Sea of Noobs is implemented: the low Sea of Noobs is hazardous, while elevated noobs are safe traversal platforms.
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
 - World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
 - World 1 Stage 4 - RC Car Maze has not been started; the current course ends at a safe Stage 4 placeholder gate.
@@ -38,7 +38,7 @@ World 1 is a 10-stage speedrun/obby world built primarily over lava.
 ### Stage List
 
 1. Stage 1 - Lava Boulders: jump back and forth across boulders over lava.
-2. Stage 2 - Yellow Noobs: traverse yellow Roblox-style noob obstacles/platforms.
+2. Stage 2 - Sea of Noobs: cross elevated safe noob platforms above a hazardous low sea of noob heads and body pieces.
 3. Stage 3 - Ninja Wall Run: achievable Roblox approximation of fast wall-running/ninja movement.
 4. Stage 4 - RC Car Maze: control an RC car through a maze, then unlock the next-stage door.
 5. Stage 5 - Tsunami Run: outrun an incoming tsunami while reaching safe slots/areas.
@@ -87,7 +87,7 @@ The game should evolve from a single generated prototype into reusable systems:
 ## World 1 - First Content Pass
 
 - Complete: Stage 1 - Lava Boulders.
-- Complete: Stage 2 - Yellow Noobs.
+- Complete: Stage 2 - Sea of Noobs, with low hazardous noob sea visuals and elevated safe noob traversal.
 - Complete: first progressive buff unlock after Stage 2.
 - Complete: Stage 3 - Ninja Wall Run.
 - Complete: developer tooling to jump directly into Stage 1, Stage 2, or Stage 3 test states without awarding skipped checkpoint coins.
@@ -119,6 +119,7 @@ The game should evolve from a single generated prototype into reusable systems:
 ## Polish
 
 - Improve UI for stage progress, coins, buffs, checkpoints, and run results.
+- Complete: player-facing Timer ON/OFF visibility toggle; this hides the timer readout only and never pauses the authoritative run timer.
 - Add sounds, music, animation, and VFX.
 - Add mobile and controller support.
 - Test multiplayer behavior.

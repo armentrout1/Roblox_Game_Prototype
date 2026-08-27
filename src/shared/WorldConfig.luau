@@ -64,9 +64,9 @@ WorldConfig.Worlds = {
 			{
 				number = 2,
 				id = "world_1_stage_2",
-				name = "Yellow Noobs",
+				name = "Sea of Noobs",
 				controllerType = "obby",
-				summary = "Traverse yellow Roblox-style noob obstacles and platforms.",
+				summary = "Cross safe elevated noobs while avoiding the hazardous low Sea of Noobs.",
 			},
 			{
 				number = 3,

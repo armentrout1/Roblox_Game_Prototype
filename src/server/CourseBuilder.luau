@@ -55,22 +55,37 @@ local BOULDER_TUNING = {
 
 local NOOB_COLORS = {
 	Yellow = Color3.fromRGB(255, 220, 64),
+	SeaYellow = Color3.fromRGB(255, 207, 48),
 	Blue = Color3.fromRGB(43, 104, 255),
 	Green = Color3.fromRGB(75, 195, 72),
 	Black = Color3.fromRGB(22, 22, 24),
+	SkinShadow = Color3.fromRGB(224, 176, 45),
 }
 
-local STAGE_2_OBSTACLES = {
-	{ kind = "head", name = "GiantNoobHead01", position = Vector3.new(0, 5.8, 214), size = Vector3.new(16, 7.4, 16), landingRatio = 0.8, face = true },
-	{ kind = "limb", name = "NoobArmBridge01", position = Vector3.new(6, 9.3, 229), size = Vector3.new(20, 1, 6), color = NOOB_COLORS.Yellow, yaw = -16 },
-	{ kind = "head", name = "NoobHandHop01", position = Vector3.new(-6, 7.3, 244), size = Vector3.new(10, 3.8, 10), landingRatio = 0.86 },
-	{ kind = "torso", name = "NoobTorsoPlatform01", position = Vector3.new(2, 9.1, 258), size = Vector3.new(15, 2, 11), yaw = 8 },
-	{ kind = "head", name = "NoobHandHop02", position = Vector3.new(9, 7.6, 272), size = Vector3.new(9, 3.6, 9), landingRatio = 0.82 },
-	{ kind = "head", name = "SmallNoobHead01", position = Vector3.new(1, 7.9, 285), size = Vector3.new(8.4, 3.4, 8.4), landingRatio = 0.78 },
-	{ kind = "head", name = "SmallNoobHead02", position = Vector3.new(-8, 8.1, 298), size = Vector3.new(8, 3.4, 8), landingRatio = 0.76 },
-	{ kind = "limb", name = "NoobLegBalance01", position = Vector3.new(-2, 9.4, 313), size = Vector3.new(5, 1, 22), color = NOOB_COLORS.Green, yaw = 12 },
-	{ kind = "limb", name = "NoobArmBridge02", position = Vector3.new(8, 9.9, 328), size = Vector3.new(18, 1, 5), color = NOOB_COLORS.Yellow, yaw = -22 },
-	{ kind = "torso", name = "TiltedNoobTorso02", position = Vector3.new(-2, 10.2, 340), size = Vector3.new(13, 2, 10), yaw = -10 },
+local STAGE_2_NOOB_SEA = {
+	visualSize = Vector3.new(88, 0.35, 168),
+	visualPosition = Vector3.new(0, 1.42, 279),
+	hazardSize = Vector3.new(90, 2.1, 168),
+	hazardPosition = Vector3.new(0, 2.8, 279),
+	columns = 7,
+	rows = 10,
+	startZ = 205,
+	zSpacing = 15,
+	xSpacing = 11,
+}
+
+local STAGE_2_SAFE_NOOBS = {
+	{ kind = "head", name = "SeaSafeGiantHead01", position = Vector3.new(0, 6.1, 214), size = Vector3.new(18, 7.8, 18), landingRatio = 0.82, face = true },
+	{ kind = "limb", name = "SeaSafeArmBridge01", position = Vector3.new(6, 10.1, 228), size = Vector3.new(22, 1.2, 7), color = NOOB_COLORS.Yellow, yaw = -16 },
+	{ kind = "stack", name = "SeaSafeStack01", position = Vector3.new(-7, 7.8, 242), size = Vector3.new(12, 7.6, 10), yaw = 8 },
+	{ kind = "head", name = "SeaSafeHeadHop01", position = Vector3.new(5, 7.5, 255), size = Vector3.new(11.5, 4.5, 11.5), landingRatio = 0.86 },
+	{ kind = "limb", name = "SeaSafeArmBridge02", position = Vector3.new(-4, 10.3, 269), size = Vector3.new(23, 1.1, 5.6), color = NOOB_COLORS.Yellow, yaw = 18 },
+	{ kind = "torso", name = "SeaSafeTorso01", position = Vector3.new(8, 10.0, 282), size = Vector3.new(15, 2.4, 11), yaw = -10 },
+	{ kind = "head", name = "SeaSafeHeadHop02", position = Vector3.new(0, 8.4, 296), size = Vector3.new(10.5, 4.2, 10.5), landingRatio = 0.8 },
+	{ kind = "hand", name = "SeaSafeHand01", position = Vector3.new(-9, 10.1, 309), size = Vector3.new(10, 2.2, 8.5), landingRatio = 0.9 },
+	{ kind = "limb", name = "SeaSafeLegBeam01", position = Vector3.new(-1, 10.7, 322), size = Vector3.new(5.5, 1.1, 24), color = NOOB_COLORS.Green, yaw = 10 },
+	{ kind = "head", name = "SeaSafeHeadHop03", position = Vector3.new(8, 9.2, 334), size = Vector3.new(9.4, 3.8, 9.4), landingRatio = 0.78 },
+	{ kind = "stack", name = "SeaSafeStack02", position = Vector3.new(0, 8.8, 345), size = Vector3.new(13.5, 7.2, 9.5), yaw = -8 },
 }
 
 local function createFacingCFrame(position, lookAtPosition)
@@ -122,6 +137,12 @@ local function createPart(parent, name, size, positionOrCFrame, color, material,
 	end
 
 	part.Parent = parent
+	return part
+end
+
+local function markHazard(part, hazardType)
+	part:SetAttribute("Hazard", true)
+	part:SetAttribute("HazardType", hazardType)
 	return part
 end
 
@@ -201,12 +222,29 @@ local function createNoobHeadObstacle(parent, index, obstacle)
 		createNoobFace(parent, obstacle.name, obstacle.position, obstacle.size)
 	end
 
-	if index == 1 or index == 6 then
+	if index == 1 or index == 6 or index == 10 then
 		local topY = obstacle.position.Y + (obstacle.size.Y / 2)
 		createPathArrow(parent, Vector3.new(obstacle.position.X, topY + 0.24, obstacle.position.Z + 0.2), COLORS.Start)
 	end
 
 	return head
+end
+
+local function createNoobHandPlatform(parent, index, obstacle)
+	local hand = createPart(parent, obstacle.name, obstacle.size, obstacle.position, NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+		Shape = Enum.PartType.Ball,
+	})
+
+	createInvisibleLanding(parent, obstacle.name .. "Landing", obstacle.position, obstacle.size, obstacle.landingRatio or 0.86)
+
+	local topY = obstacle.position.Y + (obstacle.size.Y / 2)
+	if index == 8 then
+		createPathArrow(parent, Vector3.new(obstacle.position.X, topY + 0.24, obstacle.position.Z + 0.2), COLORS.Start)
+	end
+
+	return hand
 end
 
 local function createNoobLimbObstacle(parent, obstacle)
@@ -229,6 +267,109 @@ local function createNoobTorsoObstacle(parent, obstacle)
 	})
 
 	return torso
+end
+
+local function createNoobStackObstacle(parent, index, obstacle)
+	local yaw = math.rad(obstacle.yaw or 0)
+	local torsoPosition = obstacle.position + Vector3.new(0, -0.4, 0)
+	local torsoSize = Vector3.new(obstacle.size.X, obstacle.size.Y * 0.44, obstacle.size.Z)
+	local headSize = Vector3.new(obstacle.size.X * 0.72, obstacle.size.Y * 0.34, obstacle.size.Z * 0.72)
+	local headPosition = obstacle.position + Vector3.new(0, obstacle.size.Y * 0.28, 0)
+
+	createPart(parent, obstacle.name .. "TallTorso", torsoSize, CFrame.new(torsoPosition) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Blue, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+	createPart(parent, obstacle.name .. "Head", headSize, headPosition, NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+		Shape = Enum.PartType.Ball,
+	})
+
+	local armOffset = (torsoSize.X / 2) + 0.8
+	createPart(parent, obstacle.name .. "LeftArm", Vector3.new(1.5, 1.2, torsoSize.Z + 1.5), CFrame.new(torsoPosition + Vector3.new(-armOffset, 0.2, 0)) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+	createPart(parent, obstacle.name .. "RightArm", Vector3.new(1.5, 1.2, torsoSize.Z + 1.5), CFrame.new(torsoPosition + Vector3.new(armOffset, 0.2, 0)) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+	})
+
+	createInvisibleLanding(parent, obstacle.name .. "Landing", headPosition, headSize, 1.05)
+
+	if index == 3 or index == 11 then
+		local topY = headPosition.Y + (headSize.Y / 2)
+		createPathArrow(parent, Vector3.new(obstacle.position.X, topY + 0.24, obstacle.position.Z + 0.2), COLORS.Start)
+	end
+end
+
+local function createNoobSeaVisualPiece(parent, row, column)
+	local centerColumn = (STAGE_2_NOOB_SEA.columns + 1) / 2
+	local x = (column - centerColumn) * STAGE_2_NOOB_SEA.xSpacing
+	local z = STAGE_2_NOOB_SEA.startZ + ((row - 1) * STAGE_2_NOOB_SEA.zSpacing)
+	local offset = ((row + column) % 2 == 0) and 3.2 or -3.2
+	local variant = (row * 5 + column * 3) % 5
+	local yaw = math.rad(((row * 17 + column * 29) % 50) - 25)
+	local position = Vector3.new(x + offset, 2.25 + ((row + column) % 3) * 0.12, z)
+
+	if variant == 0 then
+		createPart(parent, string.format("NoobSeaHead%02d%02d", row, column), Vector3.new(7.5, 2.9, 7.5), position, NOOB_COLORS.SeaYellow, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+			Shape = Enum.PartType.Ball,
+		})
+	elseif variant == 1 then
+		createPart(parent, string.format("NoobSeaTorso%02d%02d", row, column), Vector3.new(8.5, 2.2, 5.5), CFrame.new(position) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Blue, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+		})
+	elseif variant == 2 then
+		createPart(parent, string.format("NoobSeaArm%02d%02d", row, column), Vector3.new(10, 1.1, 3.2), CFrame.new(position) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Yellow, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+		})
+	elseif variant == 3 then
+		createPart(parent, string.format("NoobSeaLeg%02d%02d", row, column), Vector3.new(4.2, 1.1, 9), CFrame.new(position) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Green, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+		})
+	else
+		createPart(parent, string.format("NoobSeaMiniBody%02d%02d", row, column), Vector3.new(5.5, 1.6, 4.4), CFrame.new(position + Vector3.new(0, -0.2, 0)) * CFrame.Angles(0, yaw, 0), NOOB_COLORS.Blue, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+		})
+		createPart(parent, string.format("NoobSeaMiniHead%02d%02d", row, column), Vector3.new(3.8, 1.6, 3.8), position + Vector3.new(0, 1.1, 0), NOOB_COLORS.SeaYellow, Enum.Material.SmoothPlastic, {
+			CanCollide = false,
+			CanTouch = false,
+			Shape = Enum.PartType.Ball,
+		})
+	end
+end
+
+local function createStageTwoNoobSea(parent)
+	local seaFolder = Instance.new("Folder")
+	seaFolder.Name = "Stage2NoobSeaVisuals"
+	seaFolder.Parent = parent
+
+	createPart(seaFolder, "Stage2NoobSeaSurface", STAGE_2_NOOB_SEA.visualSize, STAGE_2_NOOB_SEA.visualPosition, NOOB_COLORS.SkinShadow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		CanTouch = false,
+		Transparency = 0.08,
+	})
+
+	for row = 1, STAGE_2_NOOB_SEA.rows do
+		for column = 1, STAGE_2_NOOB_SEA.columns do
+			createNoobSeaVisualPiece(seaFolder, row, column)
+		end
+	end
+
+	local hazard = createPart(parent, "Stage2NoobSeaHazard", STAGE_2_NOOB_SEA.hazardSize, STAGE_2_NOOB_SEA.hazardPosition, NOOB_COLORS.SeaYellow, Enum.Material.SmoothPlastic, {
+		CanCollide = false,
+		Transparency = 1,
+	})
+
+	return markHazard(hazard, "NoobSea")
 end
 
 local function addHazardEffects(lava)
@@ -293,7 +434,7 @@ local function createLava(parent)
 		CanCollide = false,
 	})
 	addHazardEffects(lava)
-	table.insert(hazards, lava)
+	table.insert(hazards, markHazard(lava, "Lava"))
 
 	for index, stream in ipairs({
 		{ x = -24, z = 55, width = 7, length = 76 },
@@ -315,7 +456,7 @@ local function createLava(parent)
 		CanCollide = false,
 		Transparency = 1,
 	})
-	table.insert(hazards, voidKill)
+	table.insert(hazards, markHazard(voidKill, "Fall"))
 
 	return hazards
 end
@@ -400,13 +541,17 @@ local function createStageTwoEntrance(parent)
 end
 
 local function createStageTwoObstacles(parent)
-	for index, obstacle in ipairs(STAGE_2_OBSTACLES) do
+	for index, obstacle in ipairs(STAGE_2_SAFE_NOOBS) do
 		if obstacle.kind == "head" then
 			createNoobHeadObstacle(parent, index, obstacle)
 		elseif obstacle.kind == "torso" then
 			createNoobTorsoObstacle(parent, obstacle)
 		elseif obstacle.kind == "limb" then
 			createNoobLimbObstacle(parent, obstacle)
+		elseif obstacle.kind == "stack" then
+			createNoobStackObstacle(parent, index, obstacle)
+		elseif obstacle.kind == "hand" then
+			createNoobHandPlatform(parent, index, obstacle)
 		end
 	end
 end
@@ -473,6 +618,7 @@ function CourseBuilder.build()
 	createScenery(courseFolder)
 	local checkpoints = createStageOneCheckpoint(courseFolder)
 	createStageTwoEntrance(courseFolder)
+	table.insert(hazards, createStageTwoNoobSea(courseFolder))
 	createStageTwoObstacles(courseFolder)
 	table.insert(checkpoints, createStageTwoCheckpoint(courseFolder))
 	local stage3Data = Stage3WallRunBuilder.build(courseFolder)
