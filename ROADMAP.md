@@ -8,9 +8,10 @@
 - World 1 Stage 1 - Lava Boulders is implemented as the first real content pass.
 - World 1 Stage 2 - Yellow Noobs is implemented.
 - The first progressive buff unlocks after Stage 2 through the existing `BuffService` and `WorldConfig` flow.
-- World 1 Stage 3 - Ninja Wall Run has not been started; the current course ends at a safe Stage 3 placeholder gate.
+- World 1 Stage 3 - Ninja Wall Run is implemented with a client-side wall-run controller and server-owned checkpoint completion.
+- World 1 Stage 4 - RC Car Maze has not been started; the current course ends at a safe Stage 4 placeholder gate.
 - Timer rule: during an active speedrun, death does not reset or stop the timer; respawn time counts against the run.
-- Current course includes Stage 1 and Stage 2. Reaching the Stage 2 checkpoint marks Stage 2 complete and advances run state to Stage 3 metadata, but it does not finish World 1.
+- Current course includes Stage 1, Stage 2, and Stage 3. Reaching the Stage 3 checkpoint marks Stage 3 complete and advances run state to Stage 4 metadata, but it does not finish World 1.
 
 ## World 1 Design Brief
 
@@ -86,12 +87,12 @@ The game should evolve from a single generated prototype into reusable systems:
 - Complete: Stage 1 - Lava Boulders.
 - Complete: Stage 2 - Yellow Noobs.
 - Complete: first progressive buff unlock after Stage 2.
-- Not started: Stage 3 - Ninja Wall Run.
-- Build Stage 3 - Ninja Wall Run.
+- Complete: Stage 3 - Ninja Wall Run.
 - Confirm checkpoint, reward, buff, respawn, and timer behavior through these first stages before adding more content.
 
 ## World 1 - Interactive Stages
 
+- Not started: Stage 4 - RC Car Maze.
 - Build Stage 4 - RC Car Maze with door unlock.
 - Build Stage 5 - Tsunami Run with safe areas.
 - Build Stage 6 - Basketball Challenge with shot meter and three required shots.
@@ -124,9 +125,9 @@ The game should evolve from a single generated prototype into reusable systems:
 
 ## Recommended Next Milestone
 
-Continue World 1 - First Content Pass only after Stage 1 and Stage 2 Studio testing:
+Begin World 1 - Interactive Stages only after Stage 1, Stage 2, and Stage 3 Studio testing:
 
-- Build Stage 3 - Ninja Wall Run.
+- Build Stage 4 - RC Car Maze.
 - Use the new `StageManager` completion API instead of awarding progress directly.
 - Keep checkpoint placement and rewards server-owned.
-- Verify the Stage 2 checkpoint, coin reward, first buff unlock, respawn orientation, and Stage 3 placeholder before adding Stage 3 content.
+- Verify the Stage 3 wall-run mechanic, checkpoint, coin reward, respawn orientation, and Stage 4 placeholder before adding Stage 4 content.

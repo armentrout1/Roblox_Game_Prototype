@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
+local Stage3WallRunBuilder = require(script.Parent:WaitForChild("Stage3WallRunBuilder"))
 local WorldConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("WorldConfig"))
 
 local CourseBuilder = {}
@@ -15,11 +16,11 @@ local START_PAD_POSITION = Vector3.new(0, 3.05, 8)
 local STAGE_1_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 10.2, 172)
 local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
 local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
-local STAGE_3_GATE_TARGET_POSITION = Vector3.new(0, 12, 382)
+local STAGE_3_FIRST_TARGET_POSITION = Vector3.new(0, 12, 382)
 
 local LAVA_FIELD = {
-	size = Vector3.new(112, 0.6, 430),
-	position = Vector3.new(0, 0.85, 176),
+	size = Vector3.new(124, 0.6, 735),
+	position = Vector3.new(0, 0.85, 292),
 }
 
 local STAGE_1_BOULDERS = {
@@ -299,6 +300,8 @@ local function createLava(parent)
 		{ x = 0, z = 151, width = 8, length = 48 },
 		{ x = -30, z = 245, width = 7, length = 82 },
 		{ x = 28, z = 322, width = 8, length = 92 },
+		{ x = -33, z = 454, width = 7, length = 110 },
+		{ x = 31, z = 557, width = 8, length = 118 },
 	}) do
 		createPart(parent, string.format("LavaGlowStream%02d", index), Vector3.new(stream.width, 0.08, stream.length), Vector3.new(stream.x, 1.2, stream.z), Color3.fromRGB(255, 143, 34), Enum.Material.Neon, {
 			CanCollide = false,
@@ -307,7 +310,7 @@ local function createLava(parent)
 		})
 	end
 
-	local voidKill = createPart(parent, "FallReset", Vector3.new(140, 0.5, 470), Vector3.new(0, -6, 176), COLORS.Lava, Enum.Material.SmoothPlastic, {
+	local voidKill = createPart(parent, "FallReset", Vector3.new(150, 0.5, 790), Vector3.new(0, -6, 292), COLORS.Lava, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
 		Transparency = 1,
 	})
@@ -434,24 +437,9 @@ local function createStageTwoCheckpoint(parent)
 		base = base,
 		platform = platform,
 		respawnPosition = STAGE_2_CHECKPOINT_RESPAWN_POSITION,
-		respawnLookAt = STAGE_3_GATE_TARGET_POSITION,
-		respawnCFrame = createFacingCFrame(STAGE_2_CHECKPOINT_RESPAWN_POSITION, STAGE_3_GATE_TARGET_POSITION),
+		respawnLookAt = STAGE_3_FIRST_TARGET_POSITION,
+		respawnCFrame = createFacingCFrame(STAGE_2_CHECKPOINT_RESPAWN_POSITION, STAGE_3_FIRST_TARGET_POSITION),
 	}
-end
-
-local function createStageThreePlaceholder(parent)
-	local platform = createPart(parent, "Stage3PlaceholderPlatform", Vector3.new(32, 1, 22), Vector3.new(0, 8.8, 378), COLORS.Beam, Enum.Material.SmoothPlastic)
-	createSurfaceLabel(platform, "STAGE 3", COLORS.Dark)
-
-	createPart(parent, "Stage3GateLeftPost", Vector3.new(2, 12, 2), Vector3.new(-11, 15, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage3GateRightPost", Vector3.new(2, 12, 2), Vector3.new(11, 15, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
-	createPart(parent, "Stage3GateTop", Vector3.new(24, 2, 2), Vector3.new(0, 21, 385), COLORS.Dark, Enum.Material.SmoothPlastic)
-
-	local closedDoor = createPart(parent, "Stage3ComingNextDoor", Vector3.new(19, 8, 1), Vector3.new(0, 14, 386), COLORS.Start, Enum.Material.ForceField, {
-		Transparency = 0.2,
-	})
-	createSurfaceLabel(closedDoor, "STAGE 3\nNINJA WALL RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Front)
-	createSurfaceLabel(closedDoor, "STAGE 3\nNINJA WALL RUN\nCOMING NEXT", COLORS.Dark, Enum.NormalId.Back)
 end
 
 local function createScenery(parent)
@@ -486,7 +474,7 @@ function CourseBuilder.build()
 	createStageTwoEntrance(courseFolder)
 	createStageTwoObstacles(courseFolder)
 	table.insert(checkpoints, createStageTwoCheckpoint(courseFolder))
-	createStageThreePlaceholder(courseFolder)
+	table.insert(checkpoints, Stage3WallRunBuilder.build(courseFolder))
 
 	return {
 		folder = courseFolder,
