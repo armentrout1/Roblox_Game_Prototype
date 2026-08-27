@@ -43,14 +43,6 @@ local STAGE_1_BOULDERS = {
 	{ position = Vector3.new(3, 5.5, 160), size = Vector3.new(7, 2.4, 5.8), rotation = Vector3.new(6, -22, -4) },
 }
 
-local BOULDER_COLORS = {
-	Color3.fromRGB(60, 64, 68),
-	Color3.fromRGB(78, 82, 86),
-	Color3.fromRGB(47, 51, 56),
-	Color3.fromRGB(92, 94, 96),
-	Color3.fromRGB(39, 43, 48),
-}
-
 local BOULDER_TUNING = {
 	visualHorizontalScale = 1.45,
 	visualHeightScale = 1.75,
@@ -62,31 +54,9 @@ local BOULDER_TUNING = {
 	lateLandingRatio = 0.72,
 }
 
-local BOULDER_VARIANTS = {
-	{
-		{ className = "Part", name = "Core", size = Vector3.new(0.78, 0.62, 0.82), offset = Vector3.new(0, -0.08, 0), rotation = Vector3.new(-5, 9, 4), colorOffset = 0 },
-		{ className = "Part", name = "FlatTop", size = Vector3.new(0.62, 0.16, 0.58), offset = Vector3.new(0, 0.42, 0.02), rotation = Vector3.new(0, -7, 0), colorOffset = 1 },
-		{ className = "WedgePart", name = "FrontFace", size = Vector3.new(0.64, 0.42, 0.3), offset = Vector3.new(0, 0.05, -0.39), rotation = Vector3.new(0, 0, 0), colorOffset = 2 },
-		{ className = "WedgePart", name = "BackFace", size = Vector3.new(0.58, 0.38, 0.34), offset = Vector3.new(0.04, 0.02, 0.39), rotation = Vector3.new(0, 180, 0), colorOffset = 1 },
-		{ className = "CornerWedgePart", name = "LeftChip", size = Vector3.new(0.38, 0.48, 0.42), offset = Vector3.new(-0.34, 0.01, -0.15), rotation = Vector3.new(0, 88, 0), colorOffset = 3 },
-		{ className = "CornerWedgePart", name = "RightChip", size = Vector3.new(0.42, 0.45, 0.36), offset = Vector3.new(0.35, -0.02, 0.1), rotation = Vector3.new(0, -74, 0), colorOffset = 4 },
-	},
-	{
-		{ className = "Part", name = "Core", size = Vector3.new(0.84, 0.58, 0.72), offset = Vector3.new(0, -0.11, 0), rotation = Vector3.new(3, -11, -5), colorOffset = 1 },
-		{ className = "Part", name = "FlatTop", size = Vector3.new(0.68, 0.15, 0.52), offset = Vector3.new(-0.02, 0.425, -0.01), rotation = Vector3.new(0, 10, 0), colorOffset = 3 },
-		{ className = "WedgePart", name = "FrontFace", size = Vector3.new(0.54, 0.4, 0.34), offset = Vector3.new(-0.08, 0.03, -0.38), rotation = Vector3.new(0, 12, 0), colorOffset = 0 },
-		{ className = "WedgePart", name = "RearSlab", size = Vector3.new(0.7, 0.44, 0.28), offset = Vector3.new(0.03, 0.01, 0.38), rotation = Vector3.new(0, 189, 0), colorOffset = 2 },
-		{ className = "CornerWedgePart", name = "LeftShard", size = Vector3.new(0.36, 0.5, 0.44), offset = Vector3.new(-0.36, -0.02, 0.08), rotation = Vector3.new(0, 24, 0), colorOffset = 4 },
-		{ className = "Part", name = "RightFacet", size = Vector3.new(0.28, 0.48, 0.58), offset = Vector3.new(0.37, -0.03, 0), rotation = Vector3.new(0, -14, 8), colorOffset = 0 },
-	},
-	{
-		{ className = "Part", name = "Core", size = Vector3.new(0.72, 0.66, 0.86), offset = Vector3.new(0, -0.09, 0), rotation = Vector3.new(-2, 17, 6), colorOffset = 2 },
-		{ className = "Part", name = "FlatTop", size = Vector3.new(0.58, 0.15, 0.64), offset = Vector3.new(0.02, 0.425, 0), rotation = Vector3.new(0, -13, 0), colorOffset = 1 },
-		{ className = "WedgePart", name = "FrontSlope", size = Vector3.new(0.68, 0.4, 0.3), offset = Vector3.new(0.03, 0.02, -0.4), rotation = Vector3.new(0, -10, 0), colorOffset = 4 },
-		{ className = "CornerWedgePart", name = "RearLeft", size = Vector3.new(0.42, 0.46, 0.42), offset = Vector3.new(-0.28, 0, 0.33), rotation = Vector3.new(0, 146, 0), colorOffset = 0 },
-		{ className = "CornerWedgePart", name = "RearRight", size = Vector3.new(0.38, 0.44, 0.48), offset = Vector3.new(0.32, -0.02, 0.3), rotation = Vector3.new(0, -142, 0), colorOffset = 3 },
-		{ className = "Part", name = "SideShelf", size = Vector3.new(0.34, 0.38, 0.6), offset = Vector3.new(-0.37, -0.08, -0.06), rotation = Vector3.new(0, 8, -7), colorOffset = 1 },
-	},
+local STAGE_1_ROCK_TEMPLATE_NAMES = {
+	"Stage1RockTemplate",
+	"stage1rocktemplate",
 }
 
 local NOOB_COLORS = {
@@ -174,25 +144,6 @@ local function createPart(parent, name, size, positionOrCFrame, color, material,
 		part.Position = positionOrCFrame
 	end
 
-	part.Color = color
-	part.Material = material or Enum.Material.SmoothPlastic
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-
-	for propertyName, value in pairs(properties or {}) do
-		part[propertyName] = value
-	end
-
-	part.Parent = parent
-	return part
-end
-
-local function createPrimitive(parent, className, name, size, cframe, color, material, properties)
-	local part = Instance.new(className)
-	part.Name = name
-	part.Anchored = true
-	part.Size = size
-	part.CFrame = cframe
 	part.Color = color
 	part.Material = material or Enum.Material.SmoothPlastic
 	part.TopSurface = Enum.SurfaceType.Smooth
@@ -527,63 +478,76 @@ local function createLava(parent)
 	return hazards
 end
 
-local function getBoulderColor(index, colorOffset)
-	return BOULDER_COLORS[((index + (colorOffset or 0) - 1) % #BOULDER_COLORS) + 1]
-end
-
-local function scaleVector(vector, scale)
-	return Vector3.new(vector.X * scale.X, vector.Y * scale.Y, vector.Z * scale.Z)
-end
-
-local function createBoulderChunk(parent, index, chunkIndex, boulderCFrame, visualSize, chunk)
-	local chunkSize = scaleVector(visualSize, chunk.size)
-	local localOffset = scaleVector(visualSize, chunk.offset)
-	local rotation = chunk.rotation or Vector3.zero
-	local cframe = boulderCFrame
-		* CFrame.new(localOffset)
-		* CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
-
-	return createPrimitive(parent, chunk.className or "Part", string.format("Stage1Boulder%02d%s%02d", index, chunk.name or "Facet", chunkIndex), chunkSize, cframe, getBoulderColor(index, chunk.colorOffset), Enum.Material.Slate, {
-		CanCollide = false,
-		CanTouch = false,
-	})
-end
-
-local function createBoulderCrack(parent, index, crackIndex, boulderCFrame, visualSize, localX, localZ, yawDegrees)
-	local topY = (visualSize.Y / 2) + 0.16
-	local cframe = boulderCFrame
-		* CFrame.new(visualSize.X * localX, topY, visualSize.Z * localZ)
-		* CFrame.Angles(0, math.rad(yawDegrees), 0)
-
-	createPrimitive(parent, "Part", string.format("Stage1Boulder%02dTopCrack%02d", index, crackIndex), Vector3.new(visualSize.X * 0.24, 0.08, visualSize.Z * 0.035), cframe, Color3.fromRGB(31, 34, 38), Enum.Material.Slate, {
-		CanCollide = false,
-		CanTouch = false,
-		Transparency = 0.08,
-	})
-end
-
-local function createFacetedBoulder(parent, index, visualSize, boulderCFrame)
-	local model = Instance.new("Model")
-	model.Name = string.format("Stage1Boulder%02d", index)
-	model.Parent = parent
-
-	local variant = BOULDER_VARIANTS[((index - 1) % #BOULDER_VARIANTS) + 1]
-	for chunkIndex, chunk in ipairs(variant) do
-		createBoulderChunk(model, index, chunkIndex, boulderCFrame, visualSize, chunk)
+local function findStageOneRockTemplate()
+	for _, name in ipairs(STAGE_1_ROCK_TEMPLATE_NAMES) do
+		local template = workspace:FindFirstChild(name)
+		if template and template:IsA("Model") then
+			return template
+		end
 	end
 
-	createBoulderCrack(model, index, 1, boulderCFrame, visualSize, -0.13, -0.04, 18 + (index * 7))
-	createBoulderCrack(model, index, 2, boulderCFrame, visualSize, 0.16, 0.12, -22 - (index * 5))
-
-	return model
+	return nil
 end
 
-local function createBoulder(parent, index, config)
+local function prepareRockClone(clone)
+	for _, descendant in ipairs(clone:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+end
+
+local function getModelSize(model)
+	local _, size = model:GetBoundingBox()
+	return size
+end
+
+local function scaleRockClone(clone, targetSize)
+	local sourceSize = getModelSize(clone)
+	local maxSourceAxis = math.max(sourceSize.X, sourceSize.Z, 0.01)
+	local maxTargetAxis = math.max(targetSize.X, targetSize.Z)
+	local scale = math.max(maxTargetAxis / maxSourceAxis, 0.01)
+
+	clone:ScaleTo(scale)
+end
+
+local function hideRockTemplate(template)
+	for _, descendant in ipairs(template:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Transparency = 1
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+		end
+	end
+end
+
+local function createTemplateBoulder(parent, template, index, visualSize, boulderCFrame)
+	local clone = template:Clone()
+	clone.Name = string.format("Stage1Boulder%02d", index)
+	clone.Parent = parent
+	prepareRockClone(clone)
+	scaleRockClone(clone, visualSize)
+	clone:PivotTo(boulderCFrame)
+
+	return clone
+end
+
+local function createFallbackBoulder(parent, index, visualSize, boulderCFrame)
+	return createPart(parent, string.format("Stage1Boulder%02d", index), visualSize, boulderCFrame, Color3.fromRGB(60, 64, 68), Enum.Material.Slate, {
+		CanCollide = false,
+		CanTouch = false,
+		Shape = Enum.PartType.Ball,
+	})
+end
+
+local function createBoulder(parent, index, config, template)
 	local rotation = config.rotation or Vector3.zero
 	local visualSize = getBoulderVisualSize(config, index)
 	local boulderCFrame = CFrame.new(config.position) * CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 
-	local boulder = createFacetedBoulder(parent, index, visualSize, boulderCFrame)
+	local boulder = if template then createTemplateBoulder(parent, template, index, visualSize, boulderCFrame) else createFallbackBoulder(parent, index, visualSize, boulderCFrame)
 
 	local landingRatio = getLandingRatio(index)
 	local topY = config.position.Y + (visualSize.Y / 2)
@@ -601,8 +565,13 @@ local function createBoulder(parent, index, config)
 end
 
 local function createBoulderRun(parent)
+	local template = findStageOneRockTemplate()
+	if template then
+		hideRockTemplate(template)
+	end
+
 	for index, boulderConfig in ipairs(STAGE_1_BOULDERS) do
-		createBoulder(parent, index, boulderConfig)
+		createBoulder(parent, index, boulderConfig, template)
 	end
 end
 
