@@ -6,10 +6,11 @@ local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild
 local CourseBuilder = {}
 
 local COLORS = ObbyConfig.Colors
-local COURSE_FORWARD = Vector3.new(0, 0, 1)
+local PLAYER_SPAWN_LOOK_DIRECTION = Vector3.new(0, 0, -1)
+local START_CHARACTER_POSITION = Vector3.new(0, 5.8, -4)
 
-local function createCourseFacingCFrame(position)
-	return CFrame.lookAt(position, position + COURSE_FORWARD)
+local function createPlayerFacingCFrame(position)
+	return CFrame.lookAt(position, position + PLAYER_SPAWN_LOOK_DIRECTION)
 end
 
 local function createPart(parent, name, size, position, color, material, properties)
@@ -114,7 +115,7 @@ local function createSpawn(parent)
 	spawnLocation.Duration = 0
 	spawnLocation.Neutral = true
 	spawnLocation.Size = Vector3.new(8, 1, 8)
-	spawnLocation.CFrame = createCourseFacingCFrame(Vector3.new(0, 3, -4))
+	spawnLocation.Position = Vector3.new(0, 3, -4)
 	spawnLocation.Color = COLORS.Spawn
 	spawnLocation.Material = Enum.Material.ForceField
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
@@ -160,7 +161,7 @@ local function createCheckpoint(parent, index, size, position)
 		index = index,
 		part = pad,
 		base = base,
-		respawnCFrame = createCourseFacingCFrame(position + Vector3.new(0, 5, 0)),
+		respawnCFrame = createPlayerFacingCFrame(position + Vector3.new(0, 5, 0)),
 	}
 end
 
@@ -195,7 +196,7 @@ local function createHazards(parent)
 	addHazardEffects(lava)
 	table.insert(hazards, lava)
 
-	local voidKill = createPart(parent, "FallReset", Vector3.new(80, 1, 220), Vector3.new(0, 0.8, 88), COLORS.Lava, Enum.Material.SmoothPlastic, {
+	local voidKill = createPart(parent, "FallReset", Vector3.new(80, 0.4, 220), Vector3.new(0, 0.2, 88), COLORS.Lava, Enum.Material.SmoothPlastic, {
 		CanCollide = false,
 		Transparency = 1,
 	})
@@ -249,7 +250,8 @@ function CourseBuilder.build()
 	return {
 		folder = courseFolder,
 		startPad = startPad,
-		startRespawnCFrame = createCourseFacingCFrame(Vector3.new(0, 8, -4)),
+		startSpawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
+		startRespawnCFrame = createPlayerFacingCFrame(START_CHARACTER_POSITION),
 		finishPad = finishPad,
 		checkpoints = checkpoints,
 		hazards = hazards,

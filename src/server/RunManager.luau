@@ -110,6 +110,10 @@ function RunManager:_watchCharacter(player, character)
 		task.defer(function()
 			self:_teleportCharacterForActiveRun(player, character)
 		end)
+	else
+		task.defer(function()
+			self:_teleportCharacterToStart(player, character)
+		end)
 	end
 
 	humanoid.Died:Connect(function()
@@ -217,17 +221,35 @@ function RunManager:_teleportCharacterForActiveRun(player, character)
 		return
 	end
 
+	self:_teleportCharacter(character, self:_getRespawnCFrame(run))
+	self._remote:FireClient(player, {
+		type = "RunRespawned",
+		checkpointIndex = run.checkpointIndex or 0,
+	})
+end
+
+function RunManager:_teleportCharacterToStart(player, character)
+	task.wait()
+
+	if self._activeRuns[player] then
+		return
+	end
+
+	self:_teleportCharacter(character, self._course.startSpawnCFrame)
+end
+
+function RunManager:_teleportCharacter(character, targetCFrame)
+	if not targetCFrame then
+		return
+	end
+
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	local rootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
 	if not humanoid or not rootPart or humanoid.Health <= 0 then
 		return
 	end
 
-	character:PivotTo(self:_getRespawnCFrame(run))
-	self._remote:FireClient(player, {
-		type = "RunRespawned",
-		checkpointIndex = run.checkpointIndex or 0,
-	})
+	character:PivotTo(targetCFrame)
 end
 
 function RunManager:_getRespawnCFrame(run)
