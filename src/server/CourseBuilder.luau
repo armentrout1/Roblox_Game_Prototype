@@ -1,3 +1,4 @@
+local InsertService = game:GetService("InsertService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ObbyConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ObbyConfig"))
@@ -22,6 +23,8 @@ local STAGE_2_START_POSITION = Vector3.new(0, 10.2, 195)
 local STAGE_2_FIRST_TARGET_POSITION = Vector3.new(0, 10.2, 214)
 local STAGE_2_CHECKPOINT_RESPAWN_POSITION = Vector3.new(0, 12, 352)
 local STAGE_3_FIRST_TARGET_POSITION = Vector3.new(0, 12, 382)
+local STAGE_1_ROCK_ASSET_NAME = "Stage1RockAsset"
+local STAGE_1_ROCK_ASSET_ID = 4701319314
 
 local LAVA_FIELD = {
 	size = Vector3.new(124, 0.6, 735),
@@ -88,6 +91,9 @@ local BOULDER_VARIANTS = {
 		{ className = "Part", name = "SideShelf", size = Vector3.new(0.34, 0.38, 0.6), offset = Vector3.new(-0.37, -0.08, -0.06), rotation = Vector3.new(0, 8, -7), colorOffset = 1 },
 	},
 }
+
+local stageOneRockTemplates = nil
+local insertedStageOneRockAsset = nil
 
 local NOOB_COLORS = {
 	Yellow = Color3.fromRGB(255, 220, 64),
@@ -255,6 +261,124 @@ local function createInvisibleLanding(parent, name, position, visualSize, landin
 		CanTouch = false,
 		Transparency = 1,
 	})
+end
+
+local function prepareDecorativeRock(instance)
+	for _, descendant in ipairs(instance:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+		end
+	end
+
+	if instance:IsA("BasePart") then
+		instance.Anchored = true
+		instance.CanCollide = false
+		instance.CanTouch = false
+		instance.CanQuery = false
+	end
+end
+
+local function getStageOneRockTemplates()
+	if stageOneRockTemplates ~= nil then
+		return stageOneRockTemplates
+	end
+
+	stageOneRockTemplates = {}
+
+	local assets = ReplicatedStorage:WaitForChild("Assets", 10)
+	local rockAsset = assets and assets:WaitForChild(STAGE_1_ROCK_ASSET_NAME, 10)
+		or workspace:FindFirstChild(STAGE_1_ROCK_ASSET_NAME)
+	if not rockAsset then
+		local ok, loadedAsset = pcall(function()
+			return InsertService:LoadAsset(STAGE_1_ROCK_ASSET_ID)
+		end)
+
+		if ok and loadedAsset then
+			loadedAsset.Name = STAGE_1_ROCK_ASSET_NAME
+			loadedAsset.Parent = ReplicatedStorage
+			insertedStageOneRockAsset = loadedAsset
+			rockAsset = loadedAsset
+		else
+			warn(string.format("Could not load rock asset %d for Stage 1.", STAGE_1_ROCK_ASSET_ID))
+		end
+	end
+
+	if not rockAsset then
+		warn(string.format("Missing %s in ReplicatedStorage.Assets or Workspace; using generated Stage 1 boulders.", STAGE_1_ROCK_ASSET_NAME))
+		return stageOneRockTemplates
+	end
+
+	if rockAsset:IsA("BasePart") then
+		table.insert(stageOneRockTemplates, rockAsset)
+	end
+
+	for _, descendant in ipairs(rockAsset:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			table.insert(stageOneRockTemplates, descendant)
+		end
+	end
+
+	if #stageOneRockTemplates == 0 then
+		warn(string.format("%s has no usable rock models or parts; using generated Stage 1 boulders.", STAGE_1_ROCK_ASSET_NAME))
+	end
+
+	return stageOneRockTemplates
+end
+
+local function getModelSize(instance)
+	if instance:IsA("Model") then
+		local _, size = instance:GetBoundingBox()
+		return size
+	end
+
+	return instance.Size
+end
+
+local function alignTopToY(instance, topY)
+	local currentCFrame
+	local currentSize
+	if instance:IsA("Model") then
+		currentCFrame, currentSize = instance:GetBoundingBox()
+	else
+		currentCFrame = instance.CFrame
+		currentSize = instance.Size
+	end
+
+	local currentTopY = currentCFrame.Position.Y + (currentSize.Y / 2)
+	instance:PivotTo(instance:GetPivot() + Vector3.new(0, topY - currentTopY, 0))
+end
+
+local function createAssetRockBoulder(parent, index, config, visualSize, boulderCFrame)
+	local templates = getStageOneRockTemplates()
+	if #templates == 0 then
+		return nil
+	end
+
+	local template = templates[((index - 1) % #templates) + 1]
+	local rock = template:Clone()
+	rock.Name = string.format("Stage1Boulder%02d", index)
+	prepareDecorativeRock(rock)
+	rock.Parent = parent
+
+	local originalSize = getModelSize(rock)
+	local originalHorizontal = math.max(originalSize.X, originalSize.Z)
+	local targetHorizontal = math.max(config.size.X, config.size.Z)
+	if originalHorizontal > 0 then
+		local scale = targetHorizontal / originalHorizontal
+		if rock:IsA("Model") then
+			rock:ScaleTo(scale)
+		else
+			rock.Size *= scale
+		end
+	end
+
+	rock:PivotTo(boulderCFrame)
+	alignTopToY(rock, config.position.Y + (visualSize.Y / 2))
+
+	return rock
 end
 
 local function createNoobFace(parent, name, position, size)
@@ -483,14 +607,14 @@ local function createStartArea(parent)
 	spawnLocation.Material = Enum.Material.ForceField
 	spawnLocation.TopSurface = Enum.SurfaceType.Smooth
 	spawnLocation.BottomSurface = Enum.SurfaceType.Smooth
-	spawnLocation.Parent = parent
+	spawnLocation.Parent = workspace
 
 	local startPad = createPart(parent, "StartPad", Vector3.new(18, 0.3, 2.5), Vector3.new(0, 3.05, 8), COLORS.Start, Enum.Material.Neon, {
 		CanCollide = false,
 	})
 	createSurfaceLabel(startPad, "GO")
 
-	return startPad
+	return startPad, spawnLocation
 end
 
 local function createLava(parent)
@@ -583,7 +707,14 @@ local function createBoulder(parent, index, config)
 	local visualSize = getBoulderVisualSize(config, index)
 	local boulderCFrame = CFrame.new(config.position) * CFrame.Angles(math.rad(rotation.X), math.rad(rotation.Y), math.rad(rotation.Z))
 
-	local boulder = createFacetedBoulder(parent, index, visualSize, boulderCFrame)
+	local boulder = createAssetRockBoulder(parent, index, config, visualSize, boulderCFrame)
+	if not boulder then
+		boulder = createPart(parent, string.format("Stage1Boulder%02d", index), config.size, boulderCFrame, getBoulderColor(index), Enum.Material.Slate, {
+			CanCollide = false,
+			CanTouch = false,
+			Shape = Enum.PartType.Ball,
+		})
+	end
 
 	local landingRatio = getLandingRatio(index)
 	local topY = config.position.Y + (visualSize.Y / 2)
@@ -721,11 +852,16 @@ function CourseBuilder.build()
 		oldCourse:Destroy()
 	end
 
+	local oldSpawn = workspace:FindFirstChild("PlayerSpawn")
+	if oldSpawn then
+		oldSpawn:Destroy()
+	end
+
 	local courseFolder = Instance.new("Folder")
 	courseFolder.Name = ObbyConfig.CourseFolderName
 	courseFolder.Parent = workspace
 
-	local startPad = createStartArea(courseFolder)
+	local startPad, spawnLocation = createStartArea(courseFolder)
 	local hazards = createLava(courseFolder)
 	createBoulderRun(courseFolder)
 	createScenery(courseFolder)
@@ -810,6 +946,7 @@ function CourseBuilder.build()
 		startStageId = STAGE_1_ID,
 		finishStageId = nil,
 		startPad = startPad,
+		spawnLocation = spawnLocation,
 		startSpawnCFrame = startCFrame,
 		startRespawnCFrame = startCFrame,
 		finishPad = nil,
